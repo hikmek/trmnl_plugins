@@ -1,0 +1,191 @@
+// TRMNL Plugin #1: Weather (yr.no / MET Norway)
+// Fetches a forecast for Alsjön (Alsjö kärrväg 7, Lerum, Sweden) and writes a
+// small JSON file that GitHub Pages serves. TRMNL polls that JSON URL and
+// renders it using the Liquid template in template.liquid.
+//
+// Data source: MET Norway Locationforecast 2.0 (api.met.no), free, no API key,
+// but requires an identifying User-Agent per their terms of service:
+// https://api.met.no/doc/TermsOfService
+
+import { writeFile, mkdir } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const LOCATION = {
+  name: "Alsjön (Alsjö kärrväg 7)",
+  municipality: "Lerum, Sweden",
+  lat: 57.8626,
+  lon: 12.3025,
+};
+
+const TIMEZONE = "Europe/Stockholm";
+const FORECAST_DAYS = 5; // today + next 4 days
+const OUTPUT_PATH = path.join(__dirname, "..", "..", "public", "weather-yr", "data.json");
+
+const USER_AGENT = "trmnl-plugins-hikmek/1.0 github.com/hikmek/trmnl_plugins";
+
+async function loadSymbolMap() {
+  const raw = await import("node:fs/promises").then((fs) =>
+    fs.readFile(path.join(__dirname, "symbol_map.json"), "utf8")
+  );
+  return JSON.parse(raw);
+}
+
+function localDateKey(isoTime) {
+  // en-CA gives YYYY-MM-DD which sorts/groups nicely.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(isoTime));
+}
+
+function localHour(isoTime) {
+  return Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: TIMEZONE,
+      hour: "2-digit",
+      hour12: false,
+    }).format(new Date(isoTime))
+  );
+}
+
+function dayName(dateKey, todayKey) {
+  if (dateKey === todayKey) return "Today";
+  const d = new Date(`${dateKey}T12:00:00`);
+  return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d);
+}
+
+function round1(n) {
+  return Math.round(n * 10) / 10;
+}
+
+async function fetchForecast() {
+  const url = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${LOCATION.lat}&lon=${LOCATION.lon}`;
+  const res = await fetch(url, {
+    headers: { "User-Agent": USER_AGENT },
+  });
+  if (!res.ok) {
+    throw new Error(`yr.no request failed: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+function pickSymbol(entry) {
+  const d = entry.data;
+  return (
+    d.next_1_hours?.summary?.symbol_code ||
+    d.next_6_hours?.summary?.symbol_code ||
+    d.next_12_hours?.summary?.symbol_code ||
+    null
+  );
+}
+
+function pickPrecip(entry) {
+  const d = entry.data;
+  return (
+    d.next_1_hours?.details?.precipitation_amount ??
+    d.next_6_hours?.details?.precipitation_amount ??
+    null
+  );
+}
+
+async function main() {
+  const symbolMap = await loadSymbolMap();
+  const readable = (code) =>
+    (code && symbolMap[code]) || (code ? code.replace(/_/g, " ") : "Unknown");
+
+  const json = await fetchForecast();
+  const timeseries = json.properties.timeseries;
+
+  const todayKey = localDateKey(new Date().toISOString());
+
+  // --- current conditions: first timeseries entry ---
+  const nowEntry = timeseries[0];
+  const nowDetails = nowEntry.data.instant.details;
+  const nowSymbol = pickSymbol(nowEntry);
+
+  const current = {
+    temperature: round1(nowDetails.air_temperature),
+    condition_code: nowSymbol,
+    condition_text: readable(nowSymbol),
+    wind_speed: round1(nowDetails.wind_speed),
+    humidity: Math.round(nowDetails.relative_humidity),
+    precipitation_next_hour: pickPrecip(nowEntry),
+  };
+
+  // --- group entries by local calendar day ---
+  const byDay = new Map();
+  for (const entry of timeseries) {
+    const key = localDateKey(entry.time);
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push(entry);
+  }
+
+  const dayKeys = [...byDay.keys()].sort().slice(0, FORECAST_DAYS);
+
+  const forecast = dayKeys.map((key) => {
+    const entries = byDay.get(key);
+    const temps = entries
+      .map((e) => e.data.instant.details.air_temperature)
+      .filter((t) => typeof t === "number");
+    const high = round1(Math.max(...temps));
+    const low = round1(Math.min(...temps));
+
+    // Representative symbol: entry closest to local noon (among entries that
+    // actually have a symbol). Far-future days only have 6-hourly UTC steps
+    // (00/06/12/18), which rarely land exactly on local noon, so pick the
+    // nearest one rather than requiring an exact match.
+    const withSymbol = entries.filter((e) => pickSymbol(e));
+    const candidates = withSymbol.length ? withSymbol : entries;
+    let repEntry = candidates[0];
+    let bestDiff = Math.abs(localHour(repEntry.time) - 12);
+    for (const e of candidates) {
+      const diff = Math.abs(localHour(e.time) - 12);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        repEntry = e;
+      }
+    }
+    const symbol = pickSymbol(repEntry);
+
+    const precipTotal = entries.reduce((sum, e) => {
+      const p = pickPrecip(e);
+      return sum + (typeof p === "number" ? p : 0);
+    }, 0);
+
+    return {
+      date: key,
+      day_name: dayName(key, todayKey),
+      high,
+      low,
+      condition_code: symbol,
+      condition_text: readable(symbol),
+      precipitation_mm: round1(precipTotal),
+    };
+  });
+
+  const today = forecast.find((d) => d.date === todayKey) || forecast[0];
+
+  const output = {
+    plugin: "weather-yr",
+    generated_at: new Date().toISOString(),
+    location: LOCATION,
+    current,
+    today: { high: today.high, low: today.low },
+    forecast,
+  };
+
+  await mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
+  await writeFile(OUTPUT_PATH, JSON.stringify(output, null, 2));
+  console.log(`Wrote ${OUTPUT_PATH}`);
+  console.log(JSON.stringify(output, null, 2));
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

@@ -1,0 +1,84 @@
+# Plugin #1 - Weather (yr.no)
+
+TRMNL private plugin (Polling strategy) showing current conditions, today's
+high/low, and a 5-day forecast for **Alsjön (Alsjö kärrväg 7, Lerum, Sweden)**.
+
+- Data source: [MET Norway Locationforecast 2.0](https://api.met.no/weatherapi/locationforecast/2.0/documentation) (yr.no), free, no API key required.
+- Coordinates: lat `57.8626`, lon `12.3025`.
+
+## How it works
+
+1. `.github/workflows/build-pages.yml` runs `fetch.mjs` every 30 minutes.
+2. `fetch.mjs` calls the yr.no API, aggregates the forecast into a small JSON
+   file, and writes it to `public/weather-yr/data.json`.
+3. The workflow publishes the `public/` folder to **GitHub Pages**.
+4. Your real TRMNL device (Private Plugin, **Polling** strategy) fetches that
+   JSON URL on its own refresh schedule and renders it using
+   `template.liquid`.
+
+## One-time setup
+
+1. **Enable GitHub Pages**: repo → Settings → Pages → Source = "GitHub
+   Actions". (No branch/folder to pick - the workflow handles it.)
+2. Push to `main` (or run the workflow manually via Actions tab →
+   "Build and deploy plugin data to GitHub Pages" → Run workflow).
+3. Confirm the JSON is live at:
+   `https://hikmek.github.io/trmnl_plugins/weather-yr/data.json`
+4. On [usetrmnl.com](https://usetrmnl.com), create a new **Private Plugin**:
+   - Strategy: **Polling**
+   - Polling URL: the URL from step 3
+   - Polling Verb: `GET`
+   - Refresh rate: 30-60 min (matches the workflow's cadence)
+   - Markup: paste the contents of `template.liquid`
+5. Add an instance of the plugin to your playlist/screen.
+
+## Data schema (`data.json`)
+
+```jsonc
+{
+  "plugin": "weather-yr",
+  "generated_at": "2026-09-07T18:00:00.000Z",
+  "location": { "name": "...", "municipality": "...", "lat": 57.8626, "lon": 12.3025 },
+  "current": {
+    "temperature": 14.2,
+    "condition_code": "partlycloudy_day",
+    "condition_text": "Partly cloudy",
+    "wind_speed": 3.1,
+    "humidity": 78,
+    "precipitation_next_hour": 0.0
+  },
+  "today": { "high": 16.5, "low": 9.8 },
+  "forecast": [
+    {
+      "date": "2026-09-07",
+      "day_name": "Today",
+      "high": 16.5,
+      "low": 9.8,
+      "condition_code": "partlycloudy_day",
+      "condition_text": "Partly cloudy",
+      "precipitation_mm": 0.4
+    }
+    // ...4 more days
+  ]
+}
+```
+
+## Local test
+
+```powershell
+node plugins/weather-yr/fetch.mjs
+```
+
+This writes `public/weather-yr/data.json` relative to the repo root and
+prints it to the console.
+
+## Notes / possible improvements
+
+- `template.liquid` is a starting point - TRMNL's Private Plugin editor has a
+  live preview once you connect the Polling URL; tweak classes/layout there
+  using the [TRMNL Framework docs](https://usetrmnl.com/framework).
+- Symbol-to-text mapping lives in `symbol_map.json`; extend it if you see
+  `condition_text` values falling back to a raw code with underscores.
+- MET Norway asks clients to identify themselves via `User-Agent` (see
+  `fetch.mjs`) and not to poll faster than the data actually updates
+  (~hourly) - the 30 min cron is comfortably within fair use.

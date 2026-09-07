@@ -1,0 +1,66 @@
+name: Build and deploy plugin data to GitHub Pages
+
+on:
+  schedule:
+    # Every 30 minutes. yr.no data itself typically updates roughly hourly.
+    - cron: "*/30 * * * *"
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # --- Plugin #1: weather-yr ---
+      - name: Fetch weather-yr data
+        run: node plugins/weather-yr/fetch.mjs
+
+      # Add future plugins here, e.g.:
+      # - name: Fetch plugin2 data
+      #   run: node plugins/plugin2/fetch.mjs
+
+      - name: Add Pages index
+        run: |
+          cat > public/index.html <<'EOF'
+          <!doctype html>
+          <html><body>
+          <h1>trmnl_plugins data feeds</h1>
+          <ul>
+            <li><a href="weather-yr/data.json">weather-yr/data.json</a></li>
+          </ul>
+          </body></html>
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

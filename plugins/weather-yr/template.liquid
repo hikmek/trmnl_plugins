@@ -1,0 +1,67 @@
+{%- comment -%}
+  Paste this into the TRMNL Private Plugin "Markup" editor for the
+  weather-yr plugin (Polling strategy). Field names match the JSON
+  produced by fetch.mjs (see data.json / README.md in this folder).
+
+  This is view-only markup: do NOT include <div class="screen">/"view">
+  wrappers - TRMNL's platform provides those automatically for private
+  plugins. Only Layout + Title Bar.
+{%- endcomment -%}
+
+<div class="layout layout--col gap--large">
+
+  <div class="layout layout--row gap--large">
+    <div class="item">
+      <div class="value value--xlarge">{{ current.temperature }}°</div>
+      <div class="label">{{ current.condition_text }}</div>
+    </div>
+
+    <div class="divider divider--vertical"></div>
+
+    <div class="item">
+      <div class="value value--large">{{ today.high }}° / {{ today.low }}°</div>
+      <div class="label">Today High / Low</div>
+    </div>
+
+    <div class="divider divider--vertical"></div>
+
+    <div class="item">
+      <div class="value">{{ current.wind_speed }} m/s</div>
+      <div class="label">Wind</div>
+    </div>
+
+    <div class="item">
+      <div class="value">{{ current.humidity }}%</div>
+      <div class="label">Humidity</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Day</th>
+        <th>Condition</th>
+        <th>High</th>
+        <th>Low</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for day in forecast %}
+      <tr>
+        <td>{{ day.day_name }}</td>
+        <td>{{ day.condition_text }}</td>
+        <td>{{ day.high }}°</td>
+        <td>{{ day.low }}°</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</div>
+
+<div class="title_bar">
+  <span class="title">Weather · Alsjön</span>
+  <span class="instance">{{ location.municipality }}</span>
+</div>
