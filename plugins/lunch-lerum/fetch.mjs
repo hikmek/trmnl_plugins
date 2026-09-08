@@ -12,6 +12,7 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { fetchWithRetry } from "../../lib/http.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -67,7 +68,7 @@ function todayKeyStockholm() {
 }
 
 async function fetchHtml() {
-  const res = await fetch(SOURCE_URL, { headers: { "User-Agent": USER_AGENT } });
+  const res = await fetchWithRetry(SOURCE_URL, { headers: { "User-Agent": USER_AGENT } });
   if (!res.ok) {
     throw new Error(`lerum.se request failed: ${res.status} ${res.statusText}`);
   }

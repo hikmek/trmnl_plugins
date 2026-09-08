@@ -29,23 +29,46 @@ jobs:
         with:
           node-version: "20"
 
+      # Each fetch step uses continue-on-error so one plugin's transient
+      # failure (e.g. a source site timing out) doesn't block the others
+      # from getting fresh data or from deploying this cycle. Any plugin
+      # that fails falls back to its last-published data.json (see the
+      # "Fall back..." step below) instead of disappearing from Pages.
+
       # --- Plugin #1: weather-yr ---
       - name: Fetch weather-yr data
+        continue-on-error: true
         run: node plugins/weather-yr/fetch.mjs
 
       # --- Plugin #2: lunch-lerum ---
       - name: Fetch lunch-lerum data
+        continue-on-error: true
         run: node plugins/lunch-lerum/fetch.mjs
 
       # --- Plugin #3: bus-grabo ---
       - name: Fetch bus-grabo data
+        continue-on-error: true
         env:
           VASTTRAFIK_AUTH_KEY: ${{ secrets.VASTTRAFIK_AUTH_KEY }}
         run: node plugins/bus-grabo/fetch.mjs
 
       # Add future plugins here, e.g.:
       # - name: Fetch plugin4 data
+      #   continue-on-error: true
       #   run: node plugins/plugin4/fetch.mjs
+
+      - name: Fall back to last published data for any plugin that failed
+        run: |
+          set -e
+          PLUGINS="weather-yr lunch-lerum bus-grabo"
+          for p in $PLUGINS; do
+            if [ ! -f "public/$p/data.json" ]; then
+              echo "No fresh data.json for $p this run - trying last published version"
+              mkdir -p "public/$p"
+              curl -fsSL "https://hikmek.github.io/trmnl_plugins/$p/data.json" -o "public/$p/data.json" \
+                || echo "No previously published data.json for $p either - skipping"
+            fi
+          done
 
       - name: Add Pages index
         run: |

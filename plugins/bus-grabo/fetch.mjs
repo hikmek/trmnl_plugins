@@ -16,6 +16,7 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { fetchWithRetry } from "../../lib/http.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,7 +35,7 @@ async function getAccessToken() {
   if (!authKey) {
     throw new Error("VASTTRAFIK_AUTH_KEY environment variable is not set");
   }
-  const res = await fetch(TOKEN_URL, {
+  const res = await fetchWithRetry(TOKEN_URL, {
     method: "POST",
     headers: {
       Authorization: `Basic ${authKey}`,
@@ -51,7 +52,7 @@ async function getAccessToken() {
 
 async function getDepartures(token, stopAreaGid, limit) {
   const url = `${API_BASE}/stop-areas/${stopAreaGid}/departures?limit=${limit}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) {
     throw new Error(`Västtrafik departures request failed (${stopAreaGid}): ${res.status} ${res.statusText}`);
   }
