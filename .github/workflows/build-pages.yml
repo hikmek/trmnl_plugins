@@ -33,9 +33,13 @@ jobs:
       - name: Fetch weather-yr data
         run: node plugins/weather-yr/fetch.mjs
 
+      # --- Plugin #2: lunch-lerum ---
+      - name: Fetch lunch-lerum data
+        run: node plugins/lunch-lerum/fetch.mjs
+
       # Add future plugins here, e.g.:
-      # - name: Fetch plugin2 data
-      #   run: node plugins/plugin2/fetch.mjs
+      # - name: Fetch plugin3 data
+      #   run: node plugins/plugin3/fetch.mjs
 
       - name: Add Pages index
         run: |
@@ -45,6 +49,7 @@ jobs:
           <h1>trmnl_plugins data feeds</h1>
           <ul>
             <li><a href="weather-yr/data.json">weather-yr/data.json</a></li>
+            <li><a href="lunch-lerum/data.json">lunch-lerum/data.json</a></li>
           </ul>
           </body></html>
           EOF
