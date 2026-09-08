@@ -1,0 +1,67 @@
+{%- comment -%}
+  Paste this into the TRMNL Private Plugin "Markup" editor for the
+  bus-grabo plugin (Polling strategy). Field names match the JSON
+  produced by fetch.mjs (see data.json / README.md in this folder).
+
+  View-only markup: no <div class="screen">/"view"> wrappers needed -
+  TRMNL's platform supplies those for private plugins.
+{%- endcomment -%}
+
+<div class="layout layout--col gap--large">
+
+  <div class="item">
+    <div class="label">{{ mjorn.stop_name }}</div>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Line</th>
+        <th>Towards</th>
+        <th>Time</th>
+        <th>In</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for dep in mjorn.departures %}
+      <tr>
+        <td>{{ dep.line }}</td>
+        <td>{{ dep.destination }}{% if dep.is_cancelled %} (INSTÄLLD){% endif %}</td>
+        <td>{{ dep.estimated_time }}{% if dep.delay_minutes > 0 %} (+{{ dep.delay_minutes }}){% endif %}</td>
+        <td>{{ dep.minutes_until }} min</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="divider"></div>
+
+  <div class="item">
+    <div class="label">{{ mjornbotorget_to_goteborg.stop_name }} → Göteborg</div>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Line</th>
+        <th>Towards</th>
+        <th>Time</th>
+        <th>In</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for dep in mjornbotorget_to_goteborg.departures %}
+      <tr>
+        <td>{{ dep.line }}</td>
+        <td>{{ dep.destination }}{% if dep.is_cancelled %} (INSTÄLLD){% endif %}</td>
+        <td>{{ dep.estimated_time }}{% if dep.delay_minutes > 0 %} (+{{ dep.delay_minutes }}){% endif %}</td>
+        <td>{{ dep.minutes_until }} min</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</div>
+
+<div class="title_bar">
+  <span class="title">Bussar · Gråbo</span>
+  <span class="instance">Västtrafik</span>
+</div>

@@ -37,9 +37,15 @@ jobs:
       - name: Fetch lunch-lerum data
         run: node plugins/lunch-lerum/fetch.mjs
 
+      # --- Plugin #3: bus-grabo ---
+      - name: Fetch bus-grabo data
+        env:
+          VASTTRAFIK_AUTH_KEY: ${{ secrets.VASTTRAFIK_AUTH_KEY }}
+        run: node plugins/bus-grabo/fetch.mjs
+
       # Add future plugins here, e.g.:
-      # - name: Fetch plugin3 data
-      #   run: node plugins/plugin3/fetch.mjs
+      # - name: Fetch plugin4 data
+      #   run: node plugins/plugin4/fetch.mjs
 
       - name: Add Pages index
         run: |
@@ -50,6 +56,7 @@ jobs:
           <ul>
             <li><a href="weather-yr/data.json">weather-yr/data.json</a></li>
             <li><a href="lunch-lerum/data.json">lunch-lerum/data.json</a></li>
+            <li><a href="bus-grabo/data.json">bus-grabo/data.json</a></li>
           </ul>
           </body></html>
           EOF
