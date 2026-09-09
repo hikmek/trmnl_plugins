@@ -1,13 +1,16 @@
 {%- comment -%}
-  Paste this into the "Quadrant" tab of the lunch-lerum plugin's Edit
-  Markup screen (separate from the "Full" tab's template.liquid). Compact
-  version for small Mashup panes - just today's lunch, no forecast table.
+Paste this into the "Quadrant" tab of the lunch-lerum plugin's Edit
+Markup screen (separate from the "Full" tab's template.liquid). Compact
+version for small Mashup panes - just today's lunch, no forecast table.
 {%- endcomment -%}
 
 <div class="layout layout--col layout--center gap--small">
   {% if today.lunch %}
   <div class="label">Dagens Lunch</div>
   <div class="value value--large">{{ today.lunch | truncate: 60 }}</div>
+  {% if today.lunch_icon_url %}
+  <img class="image" src="{{ today.lunch_icon_url }}" style="width: 32px;">
+  {% endif %}
   {% elsif today.note %}
   <div class="label">{{ today.weekday }}</div>
   <div class="value">{{ today.note }}</div>
