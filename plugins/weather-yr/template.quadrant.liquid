@@ -1,0 +1,15 @@
+{%- comment -%}
+  Paste this into the "Quadrant" tab of the weather-yr plugin's Edit Markup
+  screen (separate from the "Full" tab's template.liquid). Compact version
+  for small Mashup panes - just current temp + condition + today's range.
+{%- endcomment -%}
+
+<div class="layout layout--col layout--center gap--small">
+  <div class="value value--xlarge">{{ current.temperature }}°</div>
+  <div class="label">{{ current.condition_text }}</div>
+  <div class="description">H {{ today.high }}° / L {{ today.low }}°</div>
+</div>
+
+<div class="title_bar">
+  <span class="title">Alsjön</span>
+</div>
