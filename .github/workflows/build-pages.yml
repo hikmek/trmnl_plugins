@@ -24,6 +24,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Manual runs (workflow_dispatch) always bypass the throttles below -
+      # if you're triggering it by hand, you want fresh data now.
+      FORCE_FETCH: ${{ github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,7 +48,7 @@ jobs:
         continue-on-error: true
         run: |
           minute=$(date -u +%M)
-          if [ $(( 10#$minute % 30 )) -eq 0 ]; then
+          if [ "$FORCE_FETCH" = "true" ] || [ $(( 10#$minute % 30 )) -eq 0 ]; then
             node plugins/weather-yr/fetch.mjs
           else
             echo "Skipping weather-yr fetch this cycle (throttled to every 30 min)"
@@ -55,7 +59,7 @@ jobs:
         continue-on-error: true
         run: |
           minute=$(date -u +%M)
-          if [ $(( 10#$minute % 30 )) -eq 0 ]; then
+          if [ "$FORCE_FETCH" = "true" ] || [ $(( 10#$minute % 30 )) -eq 0 ]; then
             node plugins/lunch-lerum/fetch.mjs
           else
             echo "Skipping lunch-lerum fetch this cycle (throttled to every 30 min)"
@@ -68,7 +72,7 @@ jobs:
           VASTTRAFIK_AUTH_KEY: ${{ secrets.VASTTRAFIK_AUTH_KEY }}
         run: |
           minute=$(date -u +%M)
-          if [ $(( 10#$minute % 10 )) -eq 0 ]; then
+          if [ "$FORCE_FETCH" = "true" ] || [ $(( 10#$minute % 10 )) -eq 0 ]; then
             node plugins/bus-grabo/fetch.mjs
           else
             echo "Skipping bus-grabo fetch this cycle (throttled to every 10 min)"
