@@ -88,6 +88,19 @@ and re-run:
 node plugins/weather-yr/generate-icons.mjs
 ```
 
+## Font: smooth Inter, not the pixel font
+
+TRMNL renders pixel fonts (NicoClean/TRMNL16 etc.) by default on
+low-density e-ink devices. Normally, forcing the smooth Inter font instead
+requires a **device-wide** "Text Scale" setting (`screen--text-scale-*`,
+applied to the outer `.screen` element) - but private plugins don't
+control that wrapper. Instead, `template.liquid` and
+`template.quadrant.liquid` set `font-family: 'Inter', sans-serif` directly
+via inline `style` on their top-level containers, which cascades to all
+child text and overrides the pixel font - **scoped to just this plugin**,
+without changing any device-wide setting or affecting other plugins (e.g.
+bus-grabo, which intentionally keeps the pixel font).
+
 ## Local test
 
 ```powershell

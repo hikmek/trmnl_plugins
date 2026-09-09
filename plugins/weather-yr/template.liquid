@@ -6,9 +6,16 @@
   This is view-only markup: do NOT include <div class="screen">/"view">
   wrappers - TRMNL's platform provides those automatically for private
   plugins. Only Layout + Title Bar.
+
+  Font note: TRMNL renders pixel fonts by default on low-density e-ink
+  devices. Forcing smooth Inter instead normally requires a device-wide
+  "Text Scale" setting (screen--text-scale-*, applied to the outer
+  .screen element, which private plugins don't control). Instead we set
+  font-family directly here, scoped to just this plugin, which overrides
+  the pixel font without touching device-wide settings or other plugins.
 {%- endcomment -%}
 
-<div class="layout layout--col gap--large">
+<div class="layout layout--col gap--large" style="font-family: 'Inter', sans-serif;">
 
   <div class="layout layout--row gap--large">
     <div class="item">
@@ -69,7 +76,7 @@
 
 </div>
 
-<div class="title_bar">
+<div class="title_bar" style="font-family: 'Inter', sans-serif;">
   <span class="title">Weather · Alsjön</span>
   <span class="instance">{{ location.municipality }}</span>
 </div>
