@@ -1,0 +1,66 @@
+{%- comment -%}
+Paste this into the TRMNL Private Plugin "Markup" editor for the
+lunch-lerum plugin (Polling strategy). Field names match the JSON
+produced by fetch.mjs (see data.json / README.md in this folder).
+
+View-only markup: no <div class="screen">/"view"> wrappers needed -
+  TRMNL's platform supplies those for private plugins.
+  {%- endcomment -%}
+
+  <div class="layout layout--col gap--large">
+
+    {% if today.note %}
+    <div class="item">
+      <div class="label">{{ today.weekday }} {{ today.date }} · {{ today.note }}</div>
+    </div>
+    {% endif %}
+
+    {% if today.lunch or today.vegetarian %}
+    <div class="layout layout--row gap--large">
+      {% if today.lunch %}
+      <div class="item">
+        <div class="label">Dagens Lunch</div>
+        <div class="value value--large">{{ today.lunch }}</div>
+      </div>
+      {% endif %}
+
+      {% if today.vegetarian %}
+      <div class="item">
+        <div class="label">Dagens Gröna</div>
+        <div class="value value--large">{{ today.vegetarian }}</div>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="item">
+      <div class="value">No lunch published for today</div>
+    </div>
+    {% endif %}
+
+    <div class="divider"></div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Day</th>
+          <th>Lunch</th>
+          <th>Vegetarian</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for day in upcoming %}
+        <tr>
+          <td>{{ day.weekday }}{% if day.note %} ({{ day.note }}){% endif %}</td>
+          <td>{{ day.lunch | default: "-" }}</td>
+          <td>{{ day.vegetarian | default: "-" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+  </div>
+
+  <div class="title_bar">
+    <span class="title">Skolmat · {{ today.weekday }}</span>
+    <span class="instance">{{ term }}</span>
+  </div>
