@@ -91,6 +91,11 @@ jobs:
           mkdir -p public/banksy/gallery
           cp plugins/banksy/gallery/*.png public/banksy/gallery/
 
+      - name: Copy weather-yr static icon images
+        run: |
+          mkdir -p public/weather-yr/icons
+          cp plugins/weather-yr/icons/*.png public/weather-yr/icons/
+
       - name: Fall back to last published data for any plugin that failed
         run: |
           set -e

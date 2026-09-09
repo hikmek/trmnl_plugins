@@ -43,6 +43,8 @@ high/low, and a 5-day forecast for **Alsjön (Alsjö kärrväg 7, Lerum, Sweden)
     "temperature": 14.2,
     "condition_code": "partlycloudy_day",
     "condition_text": "Partly cloudy",
+    "icon": "partly-cloudy",
+    "icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/partly-cloudy.png",
     "wind_speed": 3.1,
     "humidity": 78,
     "precipitation_next_hour": 0.0
@@ -56,11 +58,34 @@ high/low, and a 5-day forecast for **Alsjön (Alsjö kärrväg 7, Lerum, Sweden)
       "low": 9.8,
       "condition_code": "partlycloudy_day",
       "condition_text": "Partly cloudy",
+      "icon": "partly-cloudy",
+      "icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/partly-cloudy.png",
       "precipitation_mm": 0.4
     }
     // ...4 more days
   ]
 }
+```
+
+## Pixel-art weather icons
+
+`generate-icons.mjs` procedurally draws 7 small black/white pixel-art icons
+(no external images, no licensing concerns) into `icons/*.png`:
+`sun`, `partly-cloudy`, `cloudy`, `fog`, `rain`, `snow`, `thunder`. These
+are static assets committed to git and copied into `public/weather-yr/icons/`
+by the shared workflow (same pattern as the banksy plugin's gallery).
+
+`fetch.mjs` maps every yr.no `symbol_code` (e.g.
+`lightrainshowersandthunder_day`) to one of these 7 buckets via
+`iconForCode()`, and adds `icon` (bucket name) + `icon_url` (full URL) to
+both `current` and each `forecast` day. `template.liquid` shows the icon
+next to the temperature value and in the 5-day forecast table.
+
+To tweak the icon shapes, edit the shape functions in `generate-icons.mjs`
+and re-run:
+
+```powershell
+node plugins/weather-yr/generate-icons.mjs
 ```
 
 ## Local test
