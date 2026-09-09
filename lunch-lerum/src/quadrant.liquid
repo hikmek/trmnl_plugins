@@ -1,16 +1,17 @@
 {%- comment -%}
-Paste this into the "Quadrant" tab of the lunch-lerum plugin's Edit
-Markup screen (separate from the "Full" tab's template.liquid). Compact
-version for small Mashup panes - just today's lunch, no forecast table.
+  Paste this into the "Quadrant" tab of the lunch-lerum plugin's Edit
+  Markup screen (separate from the "Full" tab's template.liquid). Compact
+  version   for small Mashup panes - just today's lunch, no forecast table.
+
+  Sizing note: value--large (58px) overflows a Quadrant pane (~1/4 screen);
+  use value--small here instead, matching the fix applied to weather-yr.
 {%- endcomment -%}
 
-<div class="layout layout--col layout--center gap--small">
+<div class="layout layout--col layout--center gap--xsmall">
   {% if today.lunch %}
+  <img class="image" src="{{ today.lunch_icon_url }}" width="32" height="32" style="width: 32px; height: 32px;">
   <div class="label">Dagens Lunch</div>
-  <div class="value value--large">{{ today.lunch | truncate: 60 }}</div>
-  {% if today.lunch_icon_url %}
-  <img class="image" src="{{ today.lunch_icon_url }}" style="width: 32px;">
-  {% endif %}
+  <div class="value value--small" style="text-align: center;">{{ today.lunch | truncate: 40 }}</div>
   {% elsif today.note %}
   <div class="label">{{ today.weekday }}</div>
   <div class="value">{{ today.note }}</div>
