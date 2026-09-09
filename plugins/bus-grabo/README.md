@@ -76,6 +76,7 @@ sizes.
 {
   "plugin": "bus-grabo",
   "generated_at": "2026-09-08T17:16:09.528Z",
+  "updated_display": "Data uppdaterad kl 21:59 idag", // shows the date instead of "idag" if not generated today (Europe/Stockholm)
   "mjorn": {
     "stop_name": "Mjörn, Lerum",
     "departures": [
