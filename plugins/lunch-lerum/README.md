@@ -8,8 +8,10 @@ TRMNL private plugin (Polling strategy) showing today's school lunch
 
 ## How it works
 
-1. `.github/workflows/build-pages.yml` runs `fetch.mjs` every 30 minutes
-   (same shared workflow as the weather plugin).
+1. `.github/workflows/build-pages.yml` runs `fetch.mjs` on every workflow
+   run, but `fetch.mjs` self-throttles via `lib/throttle.mjs` to ~once a
+   day (23h threshold) - the menu for a given day doesn't change during
+   the day, so there's no need to re-scrape more often.
 2. `fetch.mjs` downloads the lerum.se page, parses each day's heading
    (`<h3 class="subheading3">Weekday D Month [note]</h3>`) and its list of
    `<li>Dagens Lunch ...</li>` / `<li>Dagens Gröna ...</li>` items.
@@ -29,8 +31,7 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
 - Strategy: **Polling**
 - Polling URL: `https://hikmek.github.io/trmnl_plugins/lunch-lerum/data.json`
 - Polling Verb: `GET`
-- Refresh rate: 30-60 min (a daily refresh would also be enough in practice,
-  since the menu for a given day doesn't change during the day)
+- Refresh rate: once a day is plenty (matches the backend's ~23h cadence)
 - Markup: paste the contents of `template.liquid`
 
 ## Data schema (`data.json`)
@@ -62,26 +63,28 @@ weekend), `today.note` becomes `"No menu published for this date"` and
 
 ## Pixel-art food icons
 
-`generate-icons.mjs` procedurally draws 14 small black/white pixel-art
+`generate-icons.mjs` procedurally draws 16 small black/white pixel-art
 icons (no external images, no licensing concerns) into `icons/*.png`:
-`pasta`, `meatballs`, `fish`, `chicken`, `sausage`, `rice`, `soup`, `taco`,
-`stew`, `pie`, `pancake`, `meatloaf`, `casserole`, and `generic` (a plain
-empty bowl). These are static assets committed to git and copied into
-`public/lunch-lerum/icons/` by the shared workflow (same pattern as
-banksy's gallery / weather-yr's icons).
+13 food-type icons (`pasta`, `meatballs`, `fish`, `chicken`, `sausage`,
+`rice`, `soup`, `taco`, `stew`, `pie`, `pancake`, `meatloaf`, `casserole`),
+2 "who chose" icons (`chef` - a toque/chef's hat, for "Kockens val";
+`people` - two person silhouettes, for "Gästens val"), and `generic` (a
+plain empty bowl) as the ultimate fallback. These are static assets
+committed to git and copied into `public/lunch-lerum/icons/` by the
+shared workflow (same pattern as banksy's gallery / weather-yr's icons).
 
 `fetch.mjs` matches the `lunch`/`vegetarian` dish text against a
 priority-ordered keyword list (`FOOD_ICON_KEYWORDS`, first match wins -
-more specific categories like "köttbullar" are checked before broader
-ones like "pasta") and sets `lunch_icon_url` / `vegetarian_icon_url`
-accordingly. **Every actual dish always gets an icon**: if no keyword
-matches, `iconForDish()` falls back to `"generic"` rather than `null` (a
-`null` icon URL only happens when there's no dish at all that day).
-Across the full autumn term menu (78 unique dishes), 67 get a specific
-icon and 11 fall back to generic (mostly "Kockens val"/"Gästens val",
-which are genuinely unspecified "chef's/guest's choice" dishes).
+more specific food categories are checked first, then "kockens"/"gästens"
+near the end, so e.g. "Kockens val av pastarätt" still shows pasta, but
+the truly generic "Kockens val" shows the chef hat) and sets
+`lunch_icon_url` / `vegetarian_icon_url` accordingly. **Every actual dish
+always gets an icon**: if no keyword matches, `iconForDish()` falls back
+to `"generic"` rather than `null` (a `null` icon URL only happens when
+there's no dish at all that day). Across the full autumn term menu (78
+unique dishes), 73 get a specific icon and only 5 fall back to generic.
 
-`template.liquid` and `template.quadrant.liquid` show the icon **above**
+`template.liquid` and `template.quadrant.liquid` show the icon **below**
 the dish text, centered, in both the "today" section and the upcoming
 table.
 

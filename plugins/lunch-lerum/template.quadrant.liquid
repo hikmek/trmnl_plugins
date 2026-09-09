@@ -9,9 +9,9 @@
 
 <div class="layout layout--col layout--center gap--xsmall">
   {% if today.lunch %}
-  <img class="image" src="{{ today.lunch_icon_url }}" width="32" height="32" style="width: 32px; height: 32px;">
   <div class="label">Dagens Lunch</div>
   <div class="value value--small" style="text-align: center;">{{ today.lunch | truncate: 40 }}</div>
+  <img class="image" src="{{ today.lunch_icon_url }}" width="32" height="32" style="width: 32px; height: 32px;">
   {% elsif today.note %}
   <div class="label">{{ today.weekday }}</div>
   <div class="value">{{ today.note }}</div>

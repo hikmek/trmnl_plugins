@@ -67,6 +67,12 @@ const FOOD_ICON_KEYWORDS = [
   { pattern: /gryta|curry|gulasch|chili/i, icon: "stew" },
   { pattern: /gratäng|moussaka/i, icon: "casserole" },
   { pattern: /färs/i, icon: "meatloaf" },
+  // These two are checked last (after specific food types), so e.g.
+  // "Kockens val av pastarätt" still shows pasta, but the truly generic
+  // "Kockens val" / "Kockens gröna" (no specific food mentioned) falls
+  // through to the chef-hat icon, and "Gästens val" to the people icon.
+  { pattern: /kockens/i, icon: "chef" },
+  { pattern: /gästens/i, icon: "people" },
 ];
 
 function iconForDish(text) {
@@ -173,7 +179,7 @@ function parseDays(html) {
 export { parseDays, fetchHtml };
 
 const LIVE_DATA_URL = "https://hikmek.github.io/trmnl_plugins/lunch-lerum/data.json";
-const MIN_INTERVAL_MINUTES = 25; // target ~30 min; a bit under to absorb GitHub Actions schedule jitter
+const MIN_INTERVAL_MINUTES = 1380; // ~once a day (23h; a bit under 24h to absorb schedule jitter) - the menu for a given day doesn't change during the day anyway
 
 async function main() {
   if (await shouldSkipFetch(LIVE_DATA_URL, MIN_INTERVAL_MINUTES)) {

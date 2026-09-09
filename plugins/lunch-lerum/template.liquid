@@ -19,17 +19,17 @@
   <div class="layout layout--row gap--large">
     {% if today.lunch %}
     <div class="item layout layout--col layout--center gap--xsmall">
-      <img class="image" src="{{ today.lunch_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
       <div class="label">Dagens Lunch</div>
       <div class="value value--large" style="text-align: center;">{{ today.lunch }}</div>
+      <img class="image" src="{{ today.lunch_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
     </div>
     {% endif %}
 
     {% if today.vegetarian %}
     <div class="item layout layout--col layout--center gap--xsmall">
-      <img class="image" src="{{ today.vegetarian_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
       <div class="label">Dagens Gröna</div>
       <div class="value value--large" style="text-align: center;">{{ today.vegetarian }}</div>
+      <img class="image" src="{{ today.vegetarian_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
     </div>
     {% endif %}
   </div>
@@ -56,8 +56,8 @@
         <td>
           {% if day.lunch %}
           <div class="layout layout--col layout--center gap--xsmall">
-            <img class="image" src="{{ day.lunch_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
             <span style="text-align: center;">{{ day.lunch }}</span>
+            <img class="image" src="{{ day.lunch_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
           </div>
           {% else %}
           <span>-</span>
@@ -66,8 +66,8 @@
         <td>
           {% if day.vegetarian %}
           <div class="layout layout--col layout--center gap--xsmall">
-            <img class="image" src="{{ day.vegetarian_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
             <span style="text-align: center;">{{ day.vegetarian }}</span>
+            <img class="image" src="{{ day.vegetarian_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
           </div>
           {% else %}
           <span>-</span>

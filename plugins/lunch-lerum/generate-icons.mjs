@@ -256,6 +256,38 @@ function gratinGrid(size, rowTop) {
   return g;
 }
 
+// --- Standalone icons (not food-in-a-bowl - represent "who chose", not
+// "what food") ---
+
+// Chef's toque: a puffy round top (three overlapping circles, like the
+// cloud shape in the weather-yr icons) sitting on a narrower headband.
+function chefHat(size = GRID) {
+  const g = create2D(size);
+  const bumps = [
+    { cx: size * 0.34, cy: size * 0.36, r: size * 0.16 },
+    { cx: size * 0.5, cy: size * 0.24, r: size * 0.19 },
+    { cx: size * 0.66, cy: size * 0.36, r: size * 0.16 },
+  ];
+  for (const b of bumps) circle(g, b.cx, b.cy, b.r);
+  fillRect(g, size * 0.32, size * 0.5, size * 0.26, size * 0.74); // fills gaps between bumps
+  fillRect(g, size * 0.62, size * 0.8, size * 0.24, size * 0.76); // headband
+  return g;
+}
+
+// Two simple people silhouettes (round head + widening body, built from
+// stacked rects for a reliably solid silhouette at this resolution) side
+// by side, representing "guests" / common people.
+function peopleIcon(size = GRID) {
+  const g = create2D(size);
+  const people = [size * 0.3, size * 0.7];
+  for (const cx of people) {
+    fillWhere(g, (r, c) => isInEllipse(r, c, cx, size * 0.28, size * 0.13, size * 0.13));
+    fillRect(g, size * 0.44, size * 0.6, cx - size * 0.11, cx + size * 0.11); // shoulders
+    fillRect(g, size * 0.6, size * 0.84, cx - size * 0.19, cx + size * 0.19); // body
+  }
+  return g;
+}
+
 const ICONS = {
   pasta: () => withBowl(noodles),
   meatballs: () => withBowl(meatballCluster),
@@ -270,6 +302,8 @@ const ICONS = {
   pancake: () => withBowl(pancakeStack),
   meatloaf: () => withBowl(loafRect),
   casserole: () => withBowl(gratinGrid),
+  chef: () => chefHat(GRID), // "Kockens val" - chef's choice
+  people: () => peopleIcon(GRID), // "Gästens val" - guest's choice
   generic: () => bowl(GRID), // empty bowl - guaranteed fallback icon
 };
 
