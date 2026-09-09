@@ -8,6 +8,9 @@
   {% if today.lunch %}
   <div class="label">Dagens Lunch</div>
   <div class="value value--large">{{ today.lunch | truncate: 60 }}</div>
+  {% if today.lunch_icon_url %}
+  <img class="image" src="{{ today.lunch_icon_url }}" style="width: 32px;">
+  {% endif %}
   {% elsif today.note %}
   <div class="label">{{ today.weekday }}</div>
   <div class="value">{{ today.note }}</div>

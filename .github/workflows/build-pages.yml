@@ -100,6 +100,11 @@ jobs:
           mkdir -p public/weather-yr/icons
           cp plugins/weather-yr/icons/*.png public/weather-yr/icons/
 
+      - name: Copy lunch-lerum static icon images
+        run: |
+          mkdir -p public/lunch-lerum/icons
+          cp plugins/lunch-lerum/icons/*.png public/lunch-lerum/icons/
+
       - name: Fall back to last published data for any plugin that failed
         run: |
           set -e

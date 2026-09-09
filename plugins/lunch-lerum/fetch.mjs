@@ -44,6 +44,25 @@ const SWEDISH_MONTHS = {
 
 const WEEKDAYS = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag", "Söndag"];
 
+const ICON_BASE_URL = "https://hikmek.github.io/trmnl_plugins/lunch-lerum/icons";
+
+// Extensible keyword -> icon mapping. Add more entries here as more icons
+// are generated (see generate-icons.mjs). First match wins.
+const FOOD_ICON_KEYWORDS = [
+  { pattern: /spaghetti/i, icon: "spaghetti" },
+  { pattern: /köttbullar|kottbullar/i, icon: "meatballs" },
+];
+
+function iconForDish(text) {
+  if (!text) return null;
+  const match = FOOD_ICON_KEYWORDS.find((k) => k.pattern.test(text));
+  return match ? match.icon : null;
+}
+
+function iconUrl(icon) {
+  return icon ? `${ICON_BASE_URL}/${icon}.png` : null;
+}
+
 function stripTags(html) {
   return html
     .replace(/<[^>]*>/g, " ")
@@ -118,12 +137,17 @@ function parseDays(html) {
       }
     }
 
+    const lunchIcon = iconForDish(lunch);
+    const vegetarianIcon = iconForDish(vegetarian);
+
     days.push({
       date,
       weekday,
       note: note ? note.trim() : null,
       lunch,
+      lunch_icon_url: iconUrl(lunchIcon),
       vegetarian,
+      vegetarian_icon_url: iconUrl(vegetarianIcon),
     });
   }
 
@@ -148,7 +172,9 @@ async function main() {
           weekday: WEEKDAYS[(new Date(todayKey).getUTCDay() + 6) % 7],
           note: "No menu published for this date",
           lunch: null,
+          lunch_icon_url: null,
           vegetarian: null,
+          vegetarian_icon_url: null,
         };
 
   const upcoming =

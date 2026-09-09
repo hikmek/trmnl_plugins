@@ -46,7 +46,9 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
     "weekday": "Tisdag",
     "note": null,          // e.g. "Höstlov", "Studiedag", "Terminsstart" - null on normal days
     "lunch": "Panerad fisk med remouladsås och kokt potatis",
-    "vegetarian": null     // null if only one option was published that day
+    "lunch_icon_url": null, // set only if the dish text matches a known keyword (see below)
+    "vegetarian": null,    // null if only one option was published that day
+    "vegetarian_icon_url": null
   },
   "upcoming": [
     // next 4 days found on the page after today, same shape as `today`
@@ -57,6 +59,28 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
 If a date isn't found on the page at all (e.g. outside the term, or a
 weekend), `today.note` becomes `"No menu published for this date"` and
 `lunch`/`vegetarian` are `null`.
+
+## Pixel-art food icons
+
+`generate-icons.mjs` procedurally draws small black/white pixel-art icons
+(no external images) into `icons/*.png`: currently `spaghetti` (wavy
+noodles in a bowl) and `meatballs` (round cluster in a bowl). These are
+static assets committed to git and copied into `public/lunch-lerum/icons/`
+by the shared workflow (same pattern as banksy's gallery / weather-yr's
+icons).
+
+`fetch.mjs` matches the `lunch`/`vegetarian` dish text against a keyword
+list (`FOOD_ICON_KEYWORDS`) and sets `lunch_icon_url` / `vegetarian_icon_url`
+accordingly (`null` if nothing matches). `template.liquid` shows the icon
+under the dish text, in both the "today" section and the upcoming table.
+
+To add more dishes: add a `{ pattern: /keyword/i, icon: "name" }` entry to
+`FOOD_ICON_KEYWORDS` in `fetch.mjs`, draw the matching shape function in
+`generate-icons.mjs`, then re-run:
+
+```powershell
+node plugins/lunch-lerum/generate-icons.mjs
+```
 
 ## Local test
 
