@@ -1,86 +1,86 @@
 {%- comment -%}
-  Paste this into the TRMNL Private Plugin "Markup" editor for the
-  lunch-lerum plugin (Polling strategy). Field names match the JSON
-  produced by fetch.mjs (see data.json / README.md in this folder).
+Paste this into the TRMNL Private Plugin "Markup" editor for the
+lunch-lerum plugin (Polling strategy). Field names match the JSON
+produced by fetch.mjs (see data.json / README.md in this folder).
 
-  View-only markup: no <div class="screen">/"view"> wrappers needed -
+View-only markup: no <div class="screen">/"view"> wrappers needed -
   TRMNL's platform supplies those for private plugins.
-{%- endcomment -%}
+  {%- endcomment -%}
 
-<div class="layout layout--col gap--large">
+  <div class="layout layout--col gap--large">
 
-  {% if today.note %}
-  <div class="item">
-    <div class="label">{{ today.weekday }} {{ today.date }} · {{ today.note }}</div>
-  </div>
-  {% endif %}
-
-  {% if today.lunch or today.vegetarian %}
-  <div class="layout layout--row gap--large">
-    {% if today.lunch %}
-    <div class="item layout layout--col layout--center gap--xsmall">
-      <img class="image" src="{{ today.lunch_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
-      <div class="label">Dagens Lunch</div>
-      <div class="value value--large" style="text-align: center;">{{ today.lunch }}</div>
+    {% if today.note %}
+    <div class="item">
+      <div class="label">{{ today.weekday }} {{ today.date }} · {{ today.note }}</div>
     </div>
     {% endif %}
 
-    {% if today.vegetarian %}
-    <div class="item layout layout--col layout--center gap--xsmall">
-      <img class="image" src="{{ today.vegetarian_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
-      <div class="label">Dagens Gröna</div>
-      <div class="value value--large" style="text-align: center;">{{ today.vegetarian }}</div>
+    {% if today.lunch or today.vegetarian %}
+    <div class="layout layout--row gap--large">
+      {% if today.lunch %}
+      <div class="item layout layout--col layout--center gap--xsmall">
+        <div class="label">Dagens Lunch</div>
+        <div class="value value--large" style="text-align: center;">{{ today.lunch }}</div>
+        <img class="image" src="{{ today.lunch_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
+      </div>
+      {% endif %}
+
+      {% if today.vegetarian %}
+      <div class="item layout layout--col layout--center gap--xsmall">
+        <div class="label">Dagens Gröna</div>
+        <div class="value value--large" style="text-align: center;">{{ today.vegetarian }}</div>
+        <img class="image" src="{{ today.vegetarian_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="item">
+      <div class="value">No lunch published for today</div>
     </div>
     {% endif %}
+
+    <div class="divider"></div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Day</th>
+          <th>Lunch</th>
+          <th>Vegetarian</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for day in upcoming %}
+        <tr>
+          <td>{{ day.weekday }}{% if day.note %} ({{ day.note }}){% endif %}</td>
+          <td>
+            {% if day.lunch %}
+            <div class="layout layout--col layout--center gap--xsmall">
+              <span style="text-align: center;">{{ day.lunch }}</span>
+              <img class="image" src="{{ day.lunch_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
+            </div>
+            {% else %}
+            <span>-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if day.vegetarian %}
+            <div class="layout layout--col layout--center gap--xsmall">
+              <span style="text-align: center;">{{ day.vegetarian }}</span>
+              <img class="image" src="{{ day.vegetarian_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
+            </div>
+            {% else %}
+            <span>-</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
   </div>
-  {% else %}
-  <div class="item">
-    <div class="value">No lunch published for today</div>
+
+  <div class="title_bar">
+    <span class="title">Skolmat · {{ today.weekday }}</span>
+    <span class="instance">{{ term }}</span>
   </div>
-  {% endif %}
-
-  <div class="divider"></div>
-
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Day</th>
-        <th>Lunch</th>
-        <th>Vegetarian</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for day in upcoming %}
-      <tr>
-        <td>{{ day.weekday }}{% if day.note %} ({{ day.note }}){% endif %}</td>
-        <td>
-          {% if day.lunch %}
-          <div class="layout layout--col layout--center gap--xsmall">
-            <img class="image" src="{{ day.lunch_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
-            <span style="text-align: center;">{{ day.lunch }}</span>
-          </div>
-          {% else %}
-          <span>-</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if day.vegetarian %}
-          <div class="layout layout--col layout--center gap--xsmall">
-            <img class="image" src="{{ day.vegetarian_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
-            <span style="text-align: center;">{{ day.vegetarian }}</span>
-          </div>
-          {% else %}
-          <span>-</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-</div>
-
-<div class="title_bar">
-  <span class="title">Skolmat · {{ today.weekday }}</span>
-  <span class="instance">{{ term }}</span>
-</div>
