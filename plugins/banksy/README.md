@@ -11,9 +11,11 @@ random image is picked **every 5 minutes**.
    - Downloads real photos of Banksy artworks from **Wikimedia Commons**
      (see `sources.json` for the curated list, each with its license and
      photographer attribution - see "Licensing" below).
-   - Uses `sharp` to downscale each photo to a small grid (48 "big pixels"
-     wide), then upscale with nearest-neighbor to get hard pixel-art
-     blocks, then quantizes the color palette (32 colors).
+   - Uses `sharp` to downscale each photo to a coarse grid (24 "big
+     pixels" wide), converts to grayscale, stretches contrast, then applies
+     a hard threshold so every block becomes pure black or white (no gray)
+     - a stark, stencil-like look - then upscales with nearest-neighbor to
+     get big, crisp, high-contrast blocks.
    - Writes the results to `plugins/banksy/gallery/*.png` **and commits
      them to git** - they're static assets, not regenerated on a schedule.
    - Writes `plugins/banksy/gallery/manifest.json` (title/location/license/
@@ -65,11 +67,10 @@ Pages/Actions are already configured for this repo (shared with the other
 
 ## Growing the gallery
 
-`sources.json` currently has 11 curated entries, but only 6 finished
-generating before Wikimedia's anti-abuse rate limiter kicked in
-(`429 Too Many Requests`, `Retry-After: 600`) during initial setup - this
-is normal if you hit their image servers with many requests in a short
-window. To fill in the rest (or add new ones):
+`sources.json` currently has all 11 curated entries generated. If you add
+more (or Wikimedia rate-limits you mid-run - `429 Too Many Requests`,
+`Retry-After: 600`, which is normal if you hit their image servers with
+many requests in a short window), just re-run:
 
 ```powershell
 node plugins/banksy/generate-gallery.mjs

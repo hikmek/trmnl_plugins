@@ -19,8 +19,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GALLERY_DIR = path.join(__dirname, "gallery");
 const SOURCES_PATH = path.join(__dirname, "sources.json");
 
-const PIXEL_GRID_WIDTH = 48; // number of "big pixels" across the image width
-const OUTPUT_WIDTH = 480; // final rendered width (10x upscale of the grid)
+const PIXEL_GRID_WIDTH = 24; // number of "big pixels" across the image width (coarse)
+const OUTPUT_WIDTH = 480; // final rendered width (20x upscale of the grid)
+const CONTRAST_THRESHOLD = 128; // 0-255: pixel becomes pure black below, pure white at/above
 const USER_AGENT = "trmnl-plugins-hikmek/1.0 github.com/hikmek/trmnl_plugins";
 
 async function pixelate(sourceUrl) {
@@ -28,16 +29,21 @@ async function pixelate(sourceUrl) {
   if (!res.ok) throw new Error(`Failed to download ${sourceUrl}: ${res.status}`);
   const buffer = Buffer.from(await res.arrayBuffer());
 
-  // Downscale to a tiny grid (smooth averaging), then upscale with nearest-
-  // neighbor to get hard pixel-art blocks, then quantize the palette.
+  // 1. Downscale to a tiny, coarse grid (smooth averaging per block).
+  // 2. Grayscale + stretch contrast to use the full 0-255 range.
+  // 3. Hard threshold -> pure black/white (stark, stencil-like, no gray).
+  // 4. Upscale with nearest-neighbor to get big, crisp, high-contrast blocks.
   const tiny = await sharp(buffer)
     .rotate() // respect EXIF orientation
     .resize({ width: PIXEL_GRID_WIDTH })
+    .greyscale()
+    .normalize()
+    .threshold(CONTRAST_THRESHOLD)
     .toBuffer();
 
   return sharp(tiny)
     .resize({ width: OUTPUT_WIDTH, kernel: "nearest" })
-    .png({ palette: true, colors: 32, dither: 0 })
+    .png({ palette: true, colors: 2, dither: 0 })
     .toBuffer();
 }
 

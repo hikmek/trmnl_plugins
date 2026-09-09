@@ -52,5 +52,50 @@
     "license": "CC BY-SA 2.0",
     "attribution": "Simon Carey",
     "source_page": "https://commons.wikimedia.org/wiki/File:Prince_Albert,_Trafalgar_Street_-_geograph.org.uk_-_230604.jpg"
+  },
+  {
+    "id": "well-hung-lover",
+    "file": "well-hung-lover.png",
+    "title": "Well Hung Lover",
+    "location": "Bristol, UK",
+    "license": "CC BY-SA 2.0",
+    "attribution": "Linda Bailey",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Bridge_over_Frogmore_Street_-_geograph.org.uk_-_200561.jpg"
+  },
+  {
+    "id": "munich-exhibition",
+    "file": "munich-exhibition.png",
+    "title": "Banksy Exhibition Room",
+    "location": "Munich, Germany",
+    "license": "CC0",
+    "attribution": "Edelmauswaldgeist",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Banksy_M%C3%BCnchen_13.jpg"
+  },
+  {
+    "id": "extinct",
+    "file": "extinct.png",
+    "title": "E.X.T.I.N.C.T.",
+    "location": "Toronto, Canada",
+    "license": "CC BY 2.0",
+    "attribution": "Vlad Podvorny",
+    "source_page": "https://commons.wikimedia.org/wiki/File:E.X.T.I.N.C.T._(32259682130).jpg"
+  },
+  {
+    "id": "kate-moss",
+    "file": "kate-moss.png",
+    "title": "Kate Moss",
+    "location": "exhibition photo, Lisbon",
+    "license": "CC BY-SA 4.0",
+    "attribution": "GualdimG",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Kate_Moss_by_Banksy_2006_01.jpg"
+  },
+  {
+    "id": "migrant-child",
+    "file": "migrant-child.png",
+    "title": "Migrant Child",
+    "location": "Venice, Italy",
+    "license": "CC BY 4.0",
+    "attribution": "SteveLoughran",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Migrant_Child_by_Banksy.jpg"
   }
 ]
