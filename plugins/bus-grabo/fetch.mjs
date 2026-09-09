@@ -18,6 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fetchWithRetry } from "../../lib/http.mjs";
 import { formatUpdatedDisplay } from "../../lib/format.mjs";
+import { shouldSkipFetch } from "../../lib/throttle.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -92,7 +93,15 @@ function formatDeparture(raw, nowMs) {
   };
 }
 
+const LIVE_DATA_URL = "https://hikmek.github.io/trmnl_plugins/bus-grabo/data.json";
+const MIN_INTERVAL_MINUTES = 8; // target ~10 min; a bit under to absorb GitHub Actions schedule jitter
+
 async function main() {
+  if (await shouldSkipFetch(LIVE_DATA_URL, MIN_INTERVAL_MINUTES)) {
+    console.log(`Skipping bus-grabo fetch - last update was less than ${MIN_INTERVAL_MINUTES} min ago`);
+    return;
+  }
+
   const token = await getAccessToken();
   const nowMs = Date.now();
 

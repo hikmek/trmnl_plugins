@@ -8,7 +8,13 @@ high/low, and a 5-day forecast for **Alsjön (Alsjö kärrväg 7, Lerum, Sweden)
 
 ## How it works
 
-1. `.github/workflows/build-pages.yml` runs `fetch.mjs` every 30 minutes.
+1. `.github/workflows/build-pages.yml` runs `fetch.mjs` on every workflow
+   run (as often as every 5 min, though GitHub Actions schedules are often
+   delayed several minutes in practice). `fetch.mjs` self-throttles via
+   `lib/throttle.mjs`: it checks the currently-published data.json's own
+   age and skips the actual yr.no fetch if it's less than ~25 minutes old,
+   so real-world updates land close to every 30 min regardless of exactly
+   when GitHub happens to run the workflow.
 2. `fetch.mjs` calls the yr.no API, aggregates the forecast into a small JSON
    file, and writes it to `public/weather-yr/data.json`.
 3. The workflow publishes the `public/` folder to **GitHub Pages**.
@@ -120,4 +126,4 @@ prints it to the console.
   `condition_text` values falling back to a raw code with underscores.
 - MET Norway asks clients to identify themselves via `User-Agent` (see
   `fetch.mjs`) and not to poll faster than the data actually updates
-  (~hourly) - the 30 min cron is comfortably within fair use.
+  (~hourly) - the ~30 min effective cadence is comfortably within fair use.

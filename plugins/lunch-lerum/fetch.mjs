@@ -13,6 +13,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fetchWithRetry } from "../../lib/http.mjs";
+import { shouldSkipFetch } from "../../lib/throttle.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -156,7 +157,15 @@ function parseDays(html) {
 
 export { parseDays, fetchHtml };
 
+const LIVE_DATA_URL = "https://hikmek.github.io/trmnl_plugins/lunch-lerum/data.json";
+const MIN_INTERVAL_MINUTES = 25; // target ~30 min; a bit under to absorb GitHub Actions schedule jitter
+
 async function main() {
+  if (await shouldSkipFetch(LIVE_DATA_URL, MIN_INTERVAL_MINUTES)) {
+    console.log(`Skipping lunch-lerum fetch - last update was less than ${MIN_INTERVAL_MINUTES} min ago`);
+    return;
+  }
+
   const html = await fetchHtml();
   const days = parseDays(html);
   days.sort((a, b) => a.date.localeCompare(b.date));

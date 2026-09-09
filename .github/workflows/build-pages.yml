@@ -39,44 +39,35 @@ jobs:
 
       # Each fetch step uses continue-on-error so one plugin's transient
       # failure (e.g. a source site timing out) doesn't block the others
-      # from getting fresh data or from deploying this cycle. Any plugin
-      # that fails (or is throttled/skipped this cycle) falls back to its
-      # last-published data.json (see the "Fall back..." step below).
+      # from getting fresh data or from deploying this cycle.
+      #
+      # Throttling (weather-yr/lunch-lerum ~30 min, bus-grabo ~10 min) now
+      # happens INSIDE each fetch.mjs (see lib/throttle.mjs): it checks how
+      # long it's actually been since the last published update, rather
+      # than requiring the wall-clock minute to land exactly on :00/:30.
+      # This matters because GitHub Actions scheduled workflows are
+      # frequently delayed/jittered by several minutes in practice, so a
+      # strict "only run at minute X" check can miss its window entirely
+      # and cause much longer real gaps than intended. Any plugin that's
+      # skipped (or fails) falls back to its last-published data.json (see
+      # the "Fall back..." step below).
 
-      # --- Plugin #1: weather-yr (throttled to ~every 30 min) ---
+      # --- Plugin #1: weather-yr ---
       - name: Fetch weather-yr data
         continue-on-error: true
-        run: |
-          minute=$(date -u +%M)
-          if [ "$FORCE_FETCH" = "true" ] || [ $(( 10#$minute % 30 )) -eq 0 ]; then
-            node plugins/weather-yr/fetch.mjs
-          else
-            echo "Skipping weather-yr fetch this cycle (throttled to every 30 min)"
-          fi
+        run: node plugins/weather-yr/fetch.mjs
 
-      # --- Plugin #2: lunch-lerum (throttled to ~every 30 min) ---
+      # --- Plugin #2: lunch-lerum ---
       - name: Fetch lunch-lerum data
         continue-on-error: true
-        run: |
-          minute=$(date -u +%M)
-          if [ "$FORCE_FETCH" = "true" ] || [ $(( 10#$minute % 30 )) -eq 0 ]; then
-            node plugins/lunch-lerum/fetch.mjs
-          else
-            echo "Skipping lunch-lerum fetch this cycle (throttled to every 30 min)"
-          fi
+        run: node plugins/lunch-lerum/fetch.mjs
 
-      # --- Plugin #3: bus-grabo (throttled to ~every 10 min) ---
+      # --- Plugin #3: bus-grabo ---
       - name: Fetch bus-grabo data
         continue-on-error: true
         env:
           VASTTRAFIK_AUTH_KEY: ${{ secrets.VASTTRAFIK_AUTH_KEY }}
-        run: |
-          minute=$(date -u +%M)
-          if [ "$FORCE_FETCH" = "true" ] || [ $(( 10#$minute % 10 )) -eq 0 ]; then
-            node plugins/bus-grabo/fetch.mjs
-          else
-            echo "Skipping bus-grabo fetch this cycle (throttled to every 10 min)"
-          fi
+        run: node plugins/bus-grabo/fetch.mjs
 
       # --- Plugin #4: banksy (runs every cycle - no external network call,
       #     just picks a random pre-generated image from the committed
