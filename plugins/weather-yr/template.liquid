@@ -20,8 +20,8 @@
   <div class="layout layout--row gap--large">
     <div class="item">
       <div class="layout layout--row layout--center-y gap--small">
-        <div class="value value--xlarge">{{ current.temperature }}°</div>
-        <img class="image" src="{{ current.icon_url }}" width="56" height="56" style="width: 56px; height: 56px;">
+        <div class="value value--xxlarge">{{ current.temperature }}°</div>
+        <img class="image" src="{{ current.icon_url }}" width="80" height="80" style="width: 80px; height: 80px;">
       </div>
       <div class="label">{{ current.condition_text }}</div>
     </div>
@@ -29,19 +29,19 @@
     <div class="divider divider--vertical"></div>
 
     <div class="item">
-      <div class="value value--large">{{ today.high }}° / {{ today.low }}°</div>
+      <div class="value value--xlarge">{{ today.high }}° / {{ today.low }}°</div>
       <div class="label">Today High / Low</div>
     </div>
 
     <div class="divider divider--vertical"></div>
 
     <div class="item">
-      <div class="value">{{ current.wind_speed }} m/s</div>
+      <div class="value value--large">{{ current.wind_speed }} m/s</div>
       <div class="label">Wind</div>
     </div>
 
     <div class="item">
-      <div class="value">{{ current.humidity }}%</div>
+      <div class="value value--large">{{ current.humidity }}%</div>
       <div class="label">Humidity</div>
     </div>
   </div>
@@ -63,7 +63,7 @@
         <td>{{ day.day_name }}</td>
         <td>
           <div class="layout layout--row layout--center-y gap--xsmall">
-            <img class="image" src="{{ day.icon_url }}" width="20" height="20" style="width: 20px; height: 20px;">
+            <img class="image" src="{{ day.icon_url }}" width="26" height="26" style="width: 26px; height: 26px;">
             <span>{{ day.condition_text }}</span>
           </div>
         </td>
