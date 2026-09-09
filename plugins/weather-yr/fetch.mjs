@@ -18,7 +18,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const LOCATION = {
   name: "Alsjön (Alsjö kärrväg 7)",
-  municipality: "Lerum, Sweden",
+  municipality: "Lerum, Sverige",
   lat: 57.8626,
   lon: 12.3025,
 };
@@ -79,9 +79,11 @@ function localHour(isoTime) {
 }
 
 function dayName(dateKey, todayKey) {
-  if (dateKey === todayKey) return "Today";
+  if (dateKey === todayKey) return "Idag";
   const d = new Date(`${dateKey}T12:00:00`);
-  return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d);
+  const sv = new Intl.DateTimeFormat("sv-SE", { weekday: "short" }).format(d);
+  // sv-SE gives lowercase abbreviations (e.g. "mån", "tis") - capitalize
+  return sv.charAt(0).toUpperCase() + sv.slice(1);
 }
 
 function round1(n) {
@@ -129,7 +131,7 @@ async function main() {
 
   const symbolMap = await loadSymbolMap();
   const readable = (code) =>
-    (code && symbolMap[code]) || (code ? code.replace(/_/g, " ") : "Unknown");
+    (code && symbolMap[code]) || (code ? code.replace(/_/g, " ") : "Okänt");
 
   const json = await fetchForecast();
   const timeseries = json.properties.timeseries;

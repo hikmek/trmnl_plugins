@@ -76,6 +76,17 @@ high/low, and a 5-day forecast for **Alsjön (Alsjö kärrväg 7, Lerum, Sweden)
 
 ## Pixel-art weather icons
 
+## Language: Swedish only
+
+All display text is Swedish: `symbol_map.json` maps every yr.no condition
+code to a Swedish description (e.g. `partlycloudy_day` → "Halvklart"),
+`day_name` uses Swedish weekday abbreviations (`sv-SE` locale, "Idag" for
+today), and every hardcoded label in `template.liquid`/
+`template.quadrant.liquid` (Vind, Luftfuktighet, Dag, Väder, Hög, Låg,
+etc.) is Swedish. There's no language toggle - if you ever want English
+back, the English originals are in git history for `symbol_map.json` and
+the templates.
+
 `generate-icons.mjs` procedurally draws 7 small black/white pixel-art icons
 (no external images, no licensing concerns) into `icons/*.png`:
 `sun`, `partly-cloudy`, `cloudy`, `fog`, `rain`, `snow`, `thunder`. These
