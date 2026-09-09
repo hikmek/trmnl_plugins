@@ -1,0 +1,101 @@
+[
+  {
+    "id": "irpin",
+    "title": "Banksy in Irpin",
+    "location": "Irpin, Ukraine",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/8/80/Banksy_in_Irpin.jpg",
+    "license": "CC BY-SA 4.0",
+    "attribution": "Rasal Hague",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Banksy_in_Irpin.jpg"
+  },
+  {
+    "id": "one-nation-under-cctv",
+    "title": "One Nation Under CCTV",
+    "location": "London, UK",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/8/8a/Bansky_one_nation_under_cctv.jpg",
+    "license": "CC BY-SA 2.0",
+    "attribution": "via Flickr",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Bansky_one_nation_under_cctv.jpg"
+  },
+  {
+    "id": "children-of-war",
+    "title": "Children of War",
+    "location": "Maidan, Kyiv, Ukraine",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/0/02/Children_of_War%2C_Maidan.jpg",
+    "license": "CC BY-SA 4.0",
+    "attribution": "Rasal Hague",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Children_of_War,_Maidan.jpg"
+  },
+  {
+    "id": "dismaland",
+    "title": "Dismaland (overview)",
+    "location": "Weston-super-Mare, UK",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Dismaland_overview_01-02_combined.jpg",
+    "license": "CC BY-SA 4.0",
+    "attribution": "M. (via Lommes)",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Dismaland_overview_01-02_combined.jpg"
+  },
+  {
+    "id": "no-loitering",
+    "title": "No Loitering",
+    "location": "Lower 9th Ward, New Orleans, USA",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/a/a9/No_Loitering_building_Lower_9th_Ward_New_Orleans.jpg",
+    "license": "CC BY-SA 3.0",
+    "attribution": "Infrogmation",
+    "source_page": "https://commons.wikimedia.org/wiki/File:No_Loitering_building_Lower_9th_Ward_New_Orleans.jpg"
+  },
+  {
+    "id": "kissing-coppers-mural",
+    "title": "Kissing Coppers (mural)",
+    "location": "Brighton, UK",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/1/1d/Prince_Albert%2C_Trafalgar_Street_-_geograph.org.uk_-_230604.jpg",
+    "license": "CC BY-SA 2.0",
+    "attribution": "Simon Carey",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Prince_Albert,_Trafalgar_Street_-_geograph.org.uk_-_230604.jpg"
+  },
+  {
+    "id": "well-hung-lover",
+    "title": "Well Hung Lover",
+    "location": "Bristol, UK",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/2/2a/Bridge_over_Frogmore_Street_-_geograph.org.uk_-_200561.jpg",
+    "license": "CC BY-SA 2.0",
+    "attribution": "Linda Bailey",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Bridge_over_Frogmore_Street_-_geograph.org.uk_-_200561.jpg"
+  },
+  {
+    "id": "munich-exhibition",
+    "title": "Banksy Exhibition Room",
+    "location": "Munich, Germany",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/9/96/Banksy_M%C3%BCnchen_13.jpg",
+    "license": "CC0",
+    "attribution": "Edelmauswaldgeist",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Banksy_M%C3%BCnchen_13.jpg"
+  },
+  {
+    "id": "extinct",
+    "title": "E.X.T.I.N.C.T.",
+    "location": "Toronto, Canada",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/1/1b/E.X.T.I.N.C.T._%2832259682130%29.jpg",
+    "license": "CC BY 2.0",
+    "attribution": "Vlad Podvorny",
+    "source_page": "https://commons.wikimedia.org/wiki/File:E.X.T.I.N.C.T._(32259682130).jpg"
+  },
+  {
+    "id": "kate-moss",
+    "title": "Kate Moss",
+    "location": "exhibition photo, Lisbon",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/3/39/Kate_Moss_by_Banksy_2006_01.jpg",
+    "license": "CC BY-SA 4.0",
+    "attribution": "GualdimG",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Kate_Moss_by_Banksy_2006_01.jpg"
+  },
+  {
+    "id": "migrant-child",
+    "title": "Migrant Child",
+    "location": "Venice, Italy",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/4/41/Migrant_Child_by_Banksy.jpg",
+    "license": "CC BY 4.0",
+    "attribution": "SteveLoughran",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Migrant_Child_by_Banksy.jpg"
+  }
+]

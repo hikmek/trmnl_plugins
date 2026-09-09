@@ -1,0 +1,20 @@
+{%- comment -%}
+  Paste this into the TRMNL Private Plugin "Markup" editor for the banksy
+  plugin (Polling strategy, refresh_interval: 5). Field names match the
+  JSON produced by fetch.mjs.
+
+  Note: the image is already pixelated/palette-quantized by
+  generate-gallery.mjs, so we do NOT add "image-dither" here - that class
+  tells TRMNL to dither a full-color photo itself, which would blur our
+  blocky pixel-art edges. We serve it as-is.
+{%- endcomment -%}
+
+<div class="layout layout--col layout--center gap--small">
+  <img class="image image--contain" src="{{ image_url }}" style="max-height: 85%;">
+  <div class="description">{{ title }} · {{ location }}</div>
+</div>
+
+<div class="title_bar">
+  <span class="title">Banksy</span>
+  <span class="instance">{{ license }} · {{ attribution }}</span>
+</div>

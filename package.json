@@ -1,0 +1,27 @@
+{
+  "name": "trmnl_plugins",
+  "version": "1.0.0",
+  "description": "TRMNL private plugins: weather, lunch, bus departures, banksy pixel art",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hikmek/trmnl_plugins.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/hikmek/trmnl_plugins/issues"
+  },
+  "homepage": "https://github.com/hikmek/trmnl_plugins#readme",
+  "dependencies": {
+    "sharp": "^0.35.4"
+  }
+}

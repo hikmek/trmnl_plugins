@@ -2,8 +2,12 @@ name: Build and deploy plugin data to GitHub Pages
 
 on:
   schedule:
-    # Every 30 minutes. yr.no data itself typically updates roughly hourly.
-    - cron: "*/30 * * * *"
+    # Every 5 minutes, to support the banksy plugin's rotation. The other
+    # plugins are internally throttled to their own slower cadence (see
+    # the "throttled" steps below) so we don't hammer yr.no/lerum.se/
+    # Vasttrafik every 5 minutes - only banksy (a local file pick, no
+    # external network call) actually runs on every single cycle.
+    - cron: "*/5 * * * *"
   push:
     branches: [main]
   workflow_dispatch: {}
@@ -32,35 +36,65 @@ jobs:
       # Each fetch step uses continue-on-error so one plugin's transient
       # failure (e.g. a source site timing out) doesn't block the others
       # from getting fresh data or from deploying this cycle. Any plugin
-      # that fails falls back to its last-published data.json (see the
-      # "Fall back..." step below) instead of disappearing from Pages.
+      # that fails (or is throttled/skipped this cycle) falls back to its
+      # last-published data.json (see the "Fall back..." step below).
 
-      # --- Plugin #1: weather-yr ---
+      # --- Plugin #1: weather-yr (throttled to ~every 30 min) ---
       - name: Fetch weather-yr data
         continue-on-error: true
-        run: node plugins/weather-yr/fetch.mjs
+        run: |
+          minute=$(date -u +%M)
+          if [ $(( 10#$minute % 30 )) -eq 0 ]; then
+            node plugins/weather-yr/fetch.mjs
+          else
+            echo "Skipping weather-yr fetch this cycle (throttled to every 30 min)"
+          fi
 
-      # --- Plugin #2: lunch-lerum ---
+      # --- Plugin #2: lunch-lerum (throttled to ~every 30 min) ---
       - name: Fetch lunch-lerum data
         continue-on-error: true
-        run: node plugins/lunch-lerum/fetch.mjs
+        run: |
+          minute=$(date -u +%M)
+          if [ $(( 10#$minute % 30 )) -eq 0 ]; then
+            node plugins/lunch-lerum/fetch.mjs
+          else
+            echo "Skipping lunch-lerum fetch this cycle (throttled to every 30 min)"
+          fi
 
-      # --- Plugin #3: bus-grabo ---
+      # --- Plugin #3: bus-grabo (throttled to ~every 10 min) ---
       - name: Fetch bus-grabo data
         continue-on-error: true
         env:
           VASTTRAFIK_AUTH_KEY: ${{ secrets.VASTTRAFIK_AUTH_KEY }}
-        run: node plugins/bus-grabo/fetch.mjs
+        run: |
+          minute=$(date -u +%M)
+          if [ $(( 10#$minute % 10 )) -eq 0 ]; then
+            node plugins/bus-grabo/fetch.mjs
+          else
+            echo "Skipping bus-grabo fetch this cycle (throttled to every 10 min)"
+          fi
+
+      # --- Plugin #4: banksy (runs every cycle - no external network call,
+      #     just picks a random pre-generated image from the committed
+      #     gallery/) ---
+      - name: Fetch banksy data
+        continue-on-error: true
+        run: node plugins/banksy/fetch.mjs
 
       # Add future plugins here, e.g.:
-      # - name: Fetch plugin4 data
+      # - name: Fetch plugin5 data
       #   continue-on-error: true
-      #   run: node plugins/plugin4/fetch.mjs
+      #   run: node plugins/plugin5/fetch.mjs
+
+      - name: Copy banksy static gallery images
+        run: |
+          mkdir -p public/banksy/gallery
+          cp plugins/banksy/gallery/*.png public/banksy/gallery/
 
       - name: Fall back to last published data for any plugin that failed
         run: |
           set -e
-          PLUGINS="weather-yr lunch-lerum bus-grabo"
+          PLUGINS="weather-yr lunch-lerum bus-grabo banksy"
           for p in $PLUGINS; do
             if [ ! -f "public/$p/data.json" ]; then
               echo "No fresh data.json for $p this run - trying last published version"
@@ -80,6 +114,7 @@ jobs:
             <li><a href="weather-yr/data.json">weather-yr/data.json</a></li>
             <li><a href="lunch-lerum/data.json">lunch-lerum/data.json</a></li>
             <li><a href="bus-grabo/data.json">bus-grabo/data.json</a></li>
+            <li><a href="banksy/data.json">banksy/data.json</a></li>
           </ul>
           </body></html>
           EOF

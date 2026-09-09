@@ -1,0 +1,56 @@
+[
+  {
+    "id": "irpin",
+    "file": "irpin.png",
+    "title": "Banksy in Irpin",
+    "location": "Irpin, Ukraine",
+    "license": "CC BY-SA 4.0",
+    "attribution": "Rasal Hague",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Banksy_in_Irpin.jpg"
+  },
+  {
+    "id": "one-nation-under-cctv",
+    "file": "one-nation-under-cctv.png",
+    "title": "One Nation Under CCTV",
+    "location": "London, UK",
+    "license": "CC BY-SA 2.0",
+    "attribution": "via Flickr",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Bansky_one_nation_under_cctv.jpg"
+  },
+  {
+    "id": "children-of-war",
+    "file": "children-of-war.png",
+    "title": "Children of War",
+    "location": "Maidan, Kyiv, Ukraine",
+    "license": "CC BY-SA 4.0",
+    "attribution": "Rasal Hague",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Children_of_War,_Maidan.jpg"
+  },
+  {
+    "id": "dismaland",
+    "file": "dismaland.png",
+    "title": "Dismaland (overview)",
+    "location": "Weston-super-Mare, UK",
+    "license": "CC BY-SA 4.0",
+    "attribution": "M. (via Lommes)",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Dismaland_overview_01-02_combined.jpg"
+  },
+  {
+    "id": "no-loitering",
+    "file": "no-loitering.png",
+    "title": "No Loitering",
+    "location": "Lower 9th Ward, New Orleans, USA",
+    "license": "CC BY-SA 3.0",
+    "attribution": "Infrogmation",
+    "source_page": "https://commons.wikimedia.org/wiki/File:No_Loitering_building_Lower_9th_Ward_New_Orleans.jpg"
+  },
+  {
+    "id": "kissing-coppers-mural",
+    "file": "kissing-coppers-mural.png",
+    "title": "Kissing Coppers (mural)",
+    "location": "Brighton, UK",
+    "license": "CC BY-SA 2.0",
+    "attribution": "Simon Carey",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Prince_Albert,_Trafalgar_Street_-_geograph.org.uk_-_230604.jpg"
+  }
+]
