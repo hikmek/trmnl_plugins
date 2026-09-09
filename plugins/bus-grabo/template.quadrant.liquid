@@ -2,20 +2,20 @@
   Paste this into the "Quadrant" tab of the bus-grabo plugin's Edit Markup
   screen (separate from the "Full" tab's template.liquid). Compact version
   for small Mashup panes - just the next departure from each board.
+
+  Same rule as template.liquid: every line uses "label" so size/font stays
+  identical and pixelated throughout.
 {%- endcomment -%}
 
 {% assign next_mjorn = mjorn.departures | first %}
 {% assign next_gbg = mjornbotorget_to_goteborg.departures | first %}
 
 <div class="layout layout--col gap--small">
-  <div class="item">
-    <div class="label">Mjörn</div>
-    <div class="value">{{ next_mjorn.line }} {{ next_mjorn.destination }} · {{ next_mjorn.minutes_until }} min</div>
-  </div>
-  <div class="item">
-    <div class="label">→ Göteborg</div>
-    <div class="value">{{ next_gbg.line }} {{ next_gbg.destination }} · {{ next_gbg.minutes_until }} min</div>
-  </div>
+  <div class="label">MJÖRN AVGÅNG</div>
+  <div class="label">{{ next_mjorn.line }} {{ next_mjorn.destination }} - {{ next_mjorn.minutes_until }} min</div>
+
+  <div class="label">-&gt; GÖTEBORG</div>
+  <div class="label">{{ next_gbg.line }} {{ next_gbg.destination }} - {{ next_gbg.minutes_until }} min</div>
 </div>
 
 <div class="title_bar">

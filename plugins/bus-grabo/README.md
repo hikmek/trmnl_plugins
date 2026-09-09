@@ -59,6 +59,17 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
   real-time accuracy)
 - Markup: paste the contents of `template.liquid`
 
+## Markup style: plain lines, not a table
+
+`template.liquid` deliberately avoids TRMNL's `table` component and uses
+one `<div class="label">` per line instead - for headers ("MJÖRN AVGÅNG",
+"-> GÖTEBORG (Gråbo busstation)") and every departure line alike. TRMNL
+maps the "label" component to a single pixel font (NicoClean / TRMNL16,
+whichever bundle is active) at one fixed size on real e-ink devices, so
+reusing it everywhere guarantees identical, pixelated text throughout
+instead of mixing table header/cell fonts with value fonts of different
+sizes.
+
 ## Data schema (`data.json`)
 
 ```jsonc

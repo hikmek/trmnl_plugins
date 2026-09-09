@@ -3,61 +3,29 @@
   bus-grabo plugin (Polling strategy). Field names match the JSON
   produced by fetch.mjs (see data.json / README.md in this folder).
 
+  Every line uses the same "label" component on purpose: TRMNL maps
+  "label" to a single pixel font (NicoClean / TRMNL16, per the active
+  bundle) at one fixed size on real e-ink devices, so using it for every
+  line - headers and departures alike - guarantees identical, pixelated
+  text throughout instead of mixing value/table fonts of different sizes.
+
   View-only markup: no <div class="screen">/"view"> wrappers needed -
   TRMNL's platform supplies those for private plugins.
 {%- endcomment -%}
 
-<div class="layout layout--col gap--large">
+<div class="layout layout--col gap--medium">
 
-  <div class="item">
-    <div class="label">{{ mjorn.stop_name }}</div>
-  </div>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Line</th>
-        <th>Towards</th>
-        <th>Time</th>
-        <th>In</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for dep in mjorn.departures %}
-      <tr>
-        <td>{{ dep.line }}</td>
-        <td>{{ dep.destination }}{% if dep.is_cancelled %} (INSTÄLLD){% endif %}</td>
-        <td>{{ dep.estimated_time }}{% if dep.delay_minutes > 0 %} (+{{ dep.delay_minutes }}){% endif %}</td>
-        <td>{{ dep.minutes_until }} min</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="label">MJÖRN AVGÅNG</div>
+  {% for dep in mjorn.departures %}
+  <div class="label">{{ dep.line }} {{ dep.destination }}{% if dep.is_cancelled %} (INSTÄLLD){% endif %} - {{ dep.estimated_time }}{% if dep.delay_minutes > 0 %} (+{{ dep.delay_minutes }}){% endif %} - {{ dep.minutes_until }} min</div>
+  {% endfor %}
 
   <div class="divider"></div>
 
-  <div class="item">
-    <div class="label">{{ mjornbotorget_to_goteborg.stop_name }} → Göteborg</div>
-  </div>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Line</th>
-        <th>Towards</th>
-        <th>Time</th>
-        <th>In</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for dep in mjornbotorget_to_goteborg.departures %}
-      <tr>
-        <td>{{ dep.line }}</td>
-        <td>{{ dep.destination }}{% if dep.is_cancelled %} (INSTÄLLD){% endif %}</td>
-        <td>{{ dep.estimated_time }}{% if dep.delay_minutes > 0 %} (+{{ dep.delay_minutes }}){% endif %}</td>
-        <td>{{ dep.minutes_until }} min</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="label">-&gt; GÖTEBORG (Gråbo busstation)</div>
+  {% for dep in mjornbotorget_to_goteborg.departures %}
+  <div class="label">{{ dep.line }} {{ dep.destination }}{% if dep.is_cancelled %} (INSTÄLLD){% endif %} - {{ dep.estimated_time }}{% if dep.delay_minutes > 0 %} (+{{ dep.delay_minutes }}){% endif %} - {{ dep.minutes_until }} min</div>
+  {% endfor %}
 
 </div>
 
