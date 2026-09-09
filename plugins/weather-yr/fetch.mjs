@@ -11,6 +11,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fetchWithRetry } from "../../lib/http.mjs";
+import { formatUpdatedDisplay } from "../../lib/format.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -196,10 +197,12 @@ async function main() {
   });
 
   const today = forecast.find((d) => d.date === todayKey) || forecast[0];
+  const nowMs = Date.now();
 
   const output = {
     plugin: "weather-yr",
     generated_at: new Date().toISOString(),
+    updated_display: formatUpdatedDisplay(nowMs, TIMEZONE),
     location: LOCATION,
     current,
     today: { high: today.high, low: today.low },

@@ -17,6 +17,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fetchWithRetry } from "../../lib/http.mjs";
+import { formatUpdatedDisplay } from "../../lib/format.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -70,31 +71,6 @@ function hhmm(iso) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(iso));
-}
-
-// "Data uppdaterad kl 21:59 idag" - or, if the Europe/Stockholm calendar
-// date at fetch time isn't the same as "today" (e.g. this exact JSON file
-// somehow gets served/viewed on a later day than it was generated), show
-// the actual date instead of "idag".
-function formatUpdatedDisplay(nowMs) {
-  const now = new Date(nowMs);
-  const parts = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Europe/Stockholm",
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "numeric",
-    month: "long",
-  }).formatToParts(now);
-  const get = (type) => parts.find((p) => p.type === type)?.value ?? "";
-  const timeStr = `${get("hour")}:${get("minute")}`;
-  const dateStr = `${get("day")} ${get("month")}`; // e.g. "9 september"
-
-  const dateKeyFmt = { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit" };
-  const dataDateKey = new Intl.DateTimeFormat("en-CA", dateKeyFmt).format(now);
-  const todayKey = new Intl.DateTimeFormat("en-CA", dateKeyFmt).format(new Date());
-
-  const dayLabel = dataDateKey === todayKey ? "idag" : dateStr;
-  return `Data uppdaterad kl ${timeStr} ${dayLabel}`;
 }
 
 function formatDeparture(raw, nowMs) {

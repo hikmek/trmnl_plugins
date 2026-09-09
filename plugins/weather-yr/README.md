@@ -38,6 +38,7 @@ high/low, and a 5-day forecast for **Alsjön (Alsjö kärrväg 7, Lerum, Sweden)
 {
   "plugin": "weather-yr",
   "generated_at": "2026-09-07T18:00:00.000Z",
+  "updated_display": "Data uppdaterad kl 21:59 idag", // shows the date instead of "idag" if not generated today (Europe/Stockholm)
   "location": { "name": "...", "municipality": "...", "lat": 57.8626, "lon": 12.3025 },
   "current": {
     "temperature": 14.2,
