@@ -18,22 +18,18 @@
   {% if today.lunch or today.vegetarian %}
   <div class="layout layout--row gap--large">
     {% if today.lunch %}
-    <div class="item">
+    <div class="item layout layout--col layout--center gap--xsmall">
+      <img class="image" src="{{ today.lunch_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
       <div class="label">Dagens Lunch</div>
-      <div class="value value--large">{{ today.lunch }}</div>
-      {% if today.lunch_icon_url %}
-      <img class="image" src="{{ today.lunch_icon_url }}" style="width: 48px;">
-      {% endif %}
+      <div class="value value--large" style="text-align: center;">{{ today.lunch }}</div>
     </div>
     {% endif %}
 
     {% if today.vegetarian %}
-    <div class="item">
+    <div class="item layout layout--col layout--center gap--xsmall">
+      <img class="image" src="{{ today.vegetarian_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
       <div class="label">Dagens Gröna</div>
-      <div class="value value--large">{{ today.vegetarian }}</div>
-      {% if today.vegetarian_icon_url %}
-      <img class="image" src="{{ today.vegetarian_icon_url }}" style="width: 48px;">
-      {% endif %}
+      <div class="value value--large" style="text-align: center;">{{ today.vegetarian }}</div>
     </div>
     {% endif %}
   </div>
@@ -58,16 +54,24 @@
       <tr>
         <td>{{ day.weekday }}{% if day.note %} ({{ day.note }}){% endif %}</td>
         <td>
-          <div class="layout layout--row layout--center-y gap--xsmall">
-            {% if day.lunch_icon_url %}<img class="image" src="{{ day.lunch_icon_url }}" style="width: 20px;">{% endif %}
-            <span>{{ day.lunch | default: "-" }}</span>
+          {% if day.lunch %}
+          <div class="layout layout--col layout--center gap--xsmall">
+            <img class="image" src="{{ day.lunch_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
+            <span style="text-align: center;">{{ day.lunch }}</span>
           </div>
+          {% else %}
+          <span>-</span>
+          {% endif %}
         </td>
         <td>
-          <div class="layout layout--row layout--center-y gap--xsmall">
-            {% if day.vegetarian_icon_url %}<img class="image" src="{{ day.vegetarian_icon_url }}" style="width: 20px;">{% endif %}
-            <span>{{ day.vegetarian | default: "-" }}</span>
+          {% if day.vegetarian %}
+          <div class="layout layout--col layout--center gap--xsmall">
+            <img class="image" src="{{ day.vegetarian_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
+            <span style="text-align: center;">{{ day.vegetarian }}</span>
           </div>
+          {% else %}
+          <span>-</span>
+          {% endif %}
         </td>
       </tr>
       {% endfor %}

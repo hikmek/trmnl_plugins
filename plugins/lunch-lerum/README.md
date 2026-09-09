@@ -62,21 +62,35 @@ weekend), `today.note` becomes `"No menu published for this date"` and
 
 ## Pixel-art food icons
 
-`generate-icons.mjs` procedurally draws small black/white pixel-art icons
-(no external images) into `icons/*.png`: currently `spaghetti` (wavy
-noodles in a bowl) and `meatballs` (round cluster in a bowl). These are
-static assets committed to git and copied into `public/lunch-lerum/icons/`
-by the shared workflow (same pattern as banksy's gallery / weather-yr's
-icons).
+`generate-icons.mjs` procedurally draws 14 small black/white pixel-art
+icons (no external images, no licensing concerns) into `icons/*.png`:
+`pasta`, `meatballs`, `fish`, `chicken`, `sausage`, `rice`, `soup`, `taco`,
+`stew`, `pie`, `pancake`, `meatloaf`, `casserole`, and `generic` (a plain
+empty bowl). These are static assets committed to git and copied into
+`public/lunch-lerum/icons/` by the shared workflow (same pattern as
+banksy's gallery / weather-yr's icons).
 
-`fetch.mjs` matches the `lunch`/`vegetarian` dish text against a keyword
-list (`FOOD_ICON_KEYWORDS`) and sets `lunch_icon_url` / `vegetarian_icon_url`
-accordingly (`null` if nothing matches). `template.liquid` shows the icon
-under the dish text, in both the "today" section and the upcoming table.
+`fetch.mjs` matches the `lunch`/`vegetarian` dish text against a
+priority-ordered keyword list (`FOOD_ICON_KEYWORDS`, first match wins -
+more specific categories like "köttbullar" are checked before broader
+ones like "pasta") and sets `lunch_icon_url` / `vegetarian_icon_url`
+accordingly. **Every actual dish always gets an icon**: if no keyword
+matches, `iconForDish()` falls back to `"generic"` rather than `null` (a
+`null` icon URL only happens when there's no dish at all that day).
+Across the full autumn term menu (78 unique dishes), 67 get a specific
+icon and 11 fall back to generic (mostly "Kockens val"/"Gästens val",
+which are genuinely unspecified "chef's/guest's choice" dishes).
 
-To add more dishes: add a `{ pattern: /keyword/i, icon: "name" }` entry to
-`FOOD_ICON_KEYWORDS` in `fetch.mjs`, draw the matching shape function in
-`generate-icons.mjs`, then re-run:
+`template.liquid` and `template.quadrant.liquid` show the icon **above**
+the dish text, centered, in both the "today" section and the upcoming
+table.
+
+To add more dishes/categories: add a `{ pattern: /keyword/i, icon: "name" }`
+entry to `FOOD_ICON_KEYWORDS` in `fetch.mjs` (remember: order matters,
+more specific first), draw a matching shape function in
+`generate-icons.mjs` (reuse the `bowl()` + `withBowl()` helpers - a
+topping function just needs to return a boolean grid for the area above
+the bowl rim), then re-run:
 
 ```powershell
 node plugins/lunch-lerum/generate-icons.mjs

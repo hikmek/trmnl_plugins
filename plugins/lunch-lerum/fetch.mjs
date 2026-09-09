@@ -47,17 +47,32 @@ const WEEKDAYS = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag",
 
 const ICON_BASE_URL = "https://hikmek.github.io/trmnl_plugins/lunch-lerum/icons";
 
-// Extensible keyword -> icon mapping. Add more entries here as more icons
-// are generated (see generate-icons.mjs). First match wins.
+// Extensible keyword -> icon mapping. First match wins, so more specific /
+// more visually distinctive categories are listed first (e.g. "köttbullar"
+// before "pasta", so "Kycklingköttbullar serveras med pasta" shows
+// meatballs rather than pasta). Any dish that matches nothing falls back
+// to "generic" (a plain bowl) in iconForDish() below, so every dish that
+// exists always gets *some* icon.
 const FOOD_ICON_KEYWORDS = [
-  { pattern: /spaghetti/i, icon: "spaghetti" },
   { pattern: /köttbullar|kottbullar/i, icon: "meatballs" },
+  { pattern: /spaghetti|pasta|lasagn|nudlar|nudel|penne/i, icon: "pasta" },
+  { pattern: /korv/i, icon: "sausage" },
+  { pattern: /fisk|lax|sej/i, icon: "fish" },
+  { pattern: /kyckling/i, icon: "chicken" },
+  { pattern: /ris/i, icon: "rice" },
+  { pattern: /taco/i, icon: "taco" },
+  { pattern: /soppa|buffe|buffé|julbord/i, icon: "soup" },
+  { pattern: /paj/i, icon: "pie" },
+  { pattern: /pannkaka/i, icon: "pancake" },
+  { pattern: /gryta|curry|gulasch|chili/i, icon: "stew" },
+  { pattern: /gratäng|moussaka/i, icon: "casserole" },
+  { pattern: /färs/i, icon: "meatloaf" },
 ];
 
 function iconForDish(text) {
-  if (!text) return null;
+  if (!text) return null; // no dish at all - nothing to show an icon for
   const match = FOOD_ICON_KEYWORDS.find((k) => k.pattern.test(text));
-  return match ? match.icon : null;
+  return match ? match.icon : "generic"; // always an icon for any real dish
 }
 
 function iconUrl(icon) {
