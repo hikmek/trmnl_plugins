@@ -5,6 +5,13 @@
 
   Sizing note: value--large (58px) overflows a Quadrant pane (~1/4 screen);
   use value--small here instead, matching the fix applied to weather-yr.
+
+  Bug fix: this used to check ONLY today.lunch, so on a day where only
+  "Dagens Gröna" (vegetarian) was published (today.lunch is null), it fell
+  through all the way to the "No lunch info" fallback even though a valid
+  dish existed. Now it shows whichever of the two is actually available,
+  preferring Lunch when both exist (Full view shows both side by side;
+  Quadrant only has room for one).
 {%- endcomment -%}
 
 <div class="layout layout--col layout--center gap--xsmall">
@@ -12,6 +19,10 @@
   <div class="label">Dagens Lunch</div>
   <div class="value value--small" style="text-align: center;">{{ today.lunch | truncate: 40 }}</div>
   <img class="image" src="{{ today.lunch_icon_url }}" width="32" height="32" style="width: 32px; height: 32px;">
+  {% elsif today.vegetarian %}
+  <div class="label">Dagens Gröna</div>
+  <div class="value value--small" style="text-align: center;">{{ today.vegetarian | truncate: 40 }}</div>
+  <img class="image" src="{{ today.vegetarian_icon_url }}" width="32" height="32" style="width: 32px; height: 32px;">
   {% elsif today.note %}
   <div class="label">{{ today.weekday }}</div>
   <div class="value">{{ today.note }}</div>
