@@ -13,7 +13,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fetchWithRetry } from "../../lib/http.mjs";
-import { shouldSkipFetch } from "../../lib/throttle.mjs";
+import { shouldSkipDailyFetch } from "../../lib/throttle.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -179,11 +179,28 @@ function parseDays(html) {
 export { parseDays, fetchHtml };
 
 const LIVE_DATA_URL = "https://hikmek.github.io/trmnl_plugins/lunch-lerum/data.json";
-const MIN_INTERVAL_MINUTES = 1380; // ~once a day (23h; a bit under 24h to absorb schedule jitter) - the menu for a given day doesn't change during the day anyway
+
+// "Data uppdaterad <weekday> <day> <month>", all in Swedish, e.g.
+// "Data uppdaterad onsdag 9 september".
+function formatUpdatedDayDate(nowMs, timeZone) {
+  const now = new Date(nowMs);
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).formatToParts(now);
+  const get = (type) => parts.find((p) => p.type === type)?.value ?? "";
+  return `Data uppdaterad ${get("weekday")} ${get("day")} ${get("month")}`;
+}
 
 async function main() {
-  if (await shouldSkipFetch(LIVE_DATA_URL, MIN_INTERVAL_MINUTES)) {
-    console.log(`Skipping lunch-lerum fetch - last update was less than ${MIN_INTERVAL_MINUTES} min ago`);
+  // Calendar-day-aware throttle (not just "23h since last fetch"): this
+  // guarantees a fresh fetch happens promptly once the Europe/Stockholm
+  // date actually changes, so "today's lunch" never keeps showing
+  // yesterday's dish for a stretch after midnight.
+  if (await shouldSkipDailyFetch(LIVE_DATA_URL, (json) => json.today?.date, TIMEZONE)) {
+    console.log("Skipping lunch-lerum fetch - already have today's menu published");
     return;
   }
 
@@ -215,6 +232,7 @@ async function main() {
     source_url: SOURCE_URL,
     term: TERM_LABEL,
     generated_at: new Date().toISOString(),
+    updated_display: formatUpdatedDayDate(Date.now(), TIMEZONE),
     today,
     upcoming,
   };

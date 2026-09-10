@@ -9,9 +9,14 @@ TRMNL private plugin (Polling strategy) showing today's school lunch
 ## How it works
 
 1. `.github/workflows/build-pages.yml` runs `fetch.mjs` on every workflow
-   run, but `fetch.mjs` self-throttles via `lib/throttle.mjs` to ~once a
-   day (23h threshold) - the menu for a given day doesn't change during
-   the day, so there's no need to re-scrape more often.
+   run, but `fetch.mjs` self-throttles via `shouldSkipDailyFetch()` in
+   `lib/throttle.mjs`: it only skips the actual scrape if the
+   **already-published `today.date` matches today's real Europe/Stockholm
+   calendar date**. This is calendar-day-aware, not just "N hours since
+   last fetch" - so as soon as the date rolls over past midnight, the very
+   next workflow run (usually within ~5-15 min) fetches fresh data
+   immediately, instead of potentially serving yesterday's menu for a long
+   stretch into the new day.
 2. `fetch.mjs` downloads the lerum.se page, parses each day's heading
    (`<h3 class="subheading3">Weekday D Month [note]</h3>`) and its list of
    `<li>Dagens Lunch ...</li>` / `<li>Dagens Gröna ...</li>` items.
@@ -42,6 +47,7 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
   "source_url": "https://lerum.se/...",
   "term": "Höstterminen 2026",
   "generated_at": "2026-09-08T16:53:59.043Z",
+  "updated_display": "Data uppdaterad onsdag 10 september", // Swedish weekday + date, shown bottom-right
   "today": {
     "date": "2026-09-08",
     "weekday": "Tisdag",
