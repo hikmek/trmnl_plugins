@@ -76,10 +76,17 @@ jobs:
         continue-on-error: true
         run: node plugins/banksy/fetch.mjs
 
+      # --- Plugin #5: broforce (runs every cycle - no external network
+      #     call, but only actually picks a new Bro once/day internally,
+      #     see fetch.mjs's calendar-day throttle) ---
+      - name: Fetch broforce data
+        continue-on-error: true
+        run: node plugins/broforce/fetch.mjs
+
       # Add future plugins here, e.g.:
-      # - name: Fetch plugin5 data
+      # - name: Fetch plugin6 data
       #   continue-on-error: true
-      #   run: node plugins/plugin5/fetch.mjs
+      #   run: node plugins/plugin6/fetch.mjs
 
       - name: Copy banksy static gallery images
         run: |
@@ -96,10 +103,15 @@ jobs:
           mkdir -p public/lunch-lerum/icons
           cp plugins/lunch-lerum/icons/*.png public/lunch-lerum/icons/
 
+      - name: Copy broforce static portrait images
+        run: |
+          mkdir -p public/broforce/portraits
+          cp plugins/broforce/portraits/*.png public/broforce/portraits/
+
       - name: Fall back to last published data for any plugin that failed
         run: |
           set -e
-          PLUGINS="weather-yr lunch-lerum bus-grabo banksy"
+          PLUGINS="weather-yr lunch-lerum bus-grabo banksy broforce"
           for p in $PLUGINS; do
             if [ ! -f "public/$p/data.json" ]; then
               echo "No fresh data.json for $p this run - trying last published version"
@@ -120,6 +132,7 @@ jobs:
             <li><a href="lunch-lerum/data.json">lunch-lerum/data.json</a></li>
             <li><a href="bus-grabo/data.json">bus-grabo/data.json</a></li>
             <li><a href="banksy/data.json">banksy/data.json</a></li>
+            <li><a href="broforce/data.json">broforce/data.json</a></li>
           </ul>
           </body></html>
           EOF

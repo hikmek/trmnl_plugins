@@ -1,7 +1,7 @@
 {
   "name": "trmnl_plugins",
   "version": "1.0.0",
-  "description": "TRMNL private plugins: weather, lunch, bus departures, banksy pixel art",
+  "description": "TRMNL private plugins: weather, lunch, bus departures, banksy pixel art, broforce bro of the day",
   "main": "index.js",
   "directories": {
     "lib": "lib"

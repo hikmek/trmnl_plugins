@@ -1,0 +1,338 @@
+[
+  {
+    "slug": "rambro",
+    "name": "Rambro",
+    "description": "John Rambo",
+    "file": "rambro.png",
+    "width": 170,
+    "height": 200
+  },
+  {
+    "slug": "brommando",
+    "name": "Brommando",
+    "description": "John Matrix from Commando",
+    "file": "brommando.png",
+    "width": 154,
+    "height": 200
+  },
+  {
+    "slug": "ba-broracus",
+    "name": "B.A. Broracus",
+    "description": "B.A. Baracus",
+    "file": "ba-broracus.png",
+    "width": 156,
+    "height": 200
+  },
+  {
+    "slug": "brodell-walker",
+    "name": "Brodell Walker",
+    "description": "Cordell Walker",
+    "file": "brodell-walker.png",
+    "width": 146,
+    "height": 200
+  },
+  {
+    "slug": "bro-hard",
+    "name": "Bro Hard",
+    "description": "John McClane from Die Hard",
+    "file": "bro-hard.png",
+    "width": 150,
+    "height": 200
+  },
+  {
+    "slug": "macbrover",
+    "name": "MacBrover",
+    "description": "Angus MacGyver",
+    "file": "macbrover.png",
+    "width": 161,
+    "height": 200
+  },
+  {
+    "slug": "brade",
+    "name": "Brade",
+    "description": "Blade",
+    "file": "brade.png",
+    "width": 159,
+    "height": 200
+  },
+  {
+    "slug": "bro-dredd",
+    "name": "Bro Dredd",
+    "description": "Judge Dredd",
+    "file": "bro-dredd.png",
+    "width": 184,
+    "height": 200
+  },
+  {
+    "slug": "bro-in-black",
+    "name": "Bro in Black",
+    "description": "James Edwards (Agent J) from Men in Black",
+    "file": "bro-in-black.png",
+    "width": 137,
+    "height": 200
+  },
+  {
+    "slug": "snake-broskin",
+    "name": "Snake Broskin",
+    "description": "Snake Plissken",
+    "file": "snake-broskin.png",
+    "width": 155,
+    "height": 200
+  },
+  {
+    "slug": "dirty-brory",
+    "name": "Dirty Brory",
+    "description": "\"Dirty\" Harry Callahan",
+    "file": "dirty-brory.png",
+    "width": 122,
+    "height": 200
+  },
+  {
+    "slug": "brominator",
+    "name": "Brominator",
+    "description": "T-800 from the Terminator franchise",
+    "file": "brominator.png",
+    "width": 159,
+    "height": 200
+  },
+  {
+    "slug": "brobocop",
+    "name": "Brobocop",
+    "description": "Alex Murphy from RoboCop",
+    "file": "brobocop.png",
+    "width": 164,
+    "height": 200
+  },
+  {
+    "slug": "indianna-brones",
+    "name": "Indianna Brones",
+    "description": "Indiana Jones",
+    "file": "indianna-brones.png",
+    "width": 156,
+    "height": 200
+  },
+  {
+    "slug": "ash-brolliams",
+    "name": "Ash Brolliams",
+    "description": "Ash Williams from The Evil Dead",
+    "file": "ash-brolliams.png",
+    "width": 135,
+    "height": 200
+  },
+  {
+    "slug": "mr-anderbro",
+    "name": "Mr. Anderbro",
+    "description": "Thomas A. Anderson / Neo",
+    "file": "mr-anderbro.png",
+    "width": 127,
+    "height": 200
+  },
+  {
+    "slug": "boondock-bros",
+    "name": "Boondock Bros",
+    "description": "Connor and Murphy MacManus from The Boondock Saints",
+    "file": "boondock-bros.png",
+    "width": 193,
+    "height": 200
+  },
+  {
+    "slug": "brochete",
+    "name": "Brochete",
+    "description": "Machete Cortez from Machete",
+    "file": "brochete.png",
+    "width": 152,
+    "height": 200
+  },
+  {
+    "slug": "bronan-the-brobarian",
+    "name": "Bronan the Brobarian",
+    "description": "Conan the Barbarian",
+    "file": "bronan-the-brobarian.png",
+    "width": 171,
+    "height": 200
+  },
+  {
+    "slug": "ellen-ripbro",
+    "name": "Ellen Ripbro",
+    "description": "Ellen Ripley from Alien",
+    "file": "ellen-ripbro.png",
+    "width": 140,
+    "height": 200
+  },
+  {
+    "slug": "brocketeer",
+    "name": "Brocketeer",
+    "description": "Cliff Secord from The Rocketeer",
+    "file": "brocketeer.png",
+    "width": 132,
+    "height": 200
+  },
+  {
+    "slug": "timebro",
+    "name": "TimeBro",
+    "description": "Max Walker from Timecop",
+    "file": "timebro.png",
+    "width": 156,
+    "height": 200
+  },
+  {
+    "slug": "broniversal-soldier",
+    "name": "Broniversal Soldier",
+    "description": "Luc Deveraux / GR44 from Universal Soldier",
+    "file": "broniversal-soldier.png",
+    "width": 158,
+    "height": 200
+  },
+  {
+    "slug": "col-james-broddock",
+    "name": "Col. James Broddock",
+    "description": "Colonel James Braddock from Missing in Action",
+    "file": "col-james-broddock.png",
+    "width": 148,
+    "height": 200
+  },
+  {
+    "slug": "cherry-broling",
+    "name": "Cherry Broling",
+    "description": "Cherry Darling from Planet Terror",
+    "file": "cherry-broling.png",
+    "width": 154,
+    "height": 200
+  },
+  {
+    "slug": "bro-max",
+    "name": "Bro Max",
+    "description": "Max Rockatansky from Mad Max",
+    "file": "bro-max.png",
+    "width": 133,
+    "height": 200
+  },
+  {
+    "slug": "the-brode",
+    "name": "The Brode",
+    "description": "Beatrix Kiddo / The Bride",
+    "file": "the-brode.png",
+    "width": 150,
+    "height": 200
+  },
+  {
+    "slug": "double-bro-seven",
+    "name": "Double Bro Seven",
+    "description": "James Bond / 007",
+    "file": "double-bro-seven.png",
+    "width": 142,
+    "height": 200
+  },
+  {
+    "slug": "brodator",
+    "name": "Brodator",
+    "description": "Predator",
+    "file": "brodator.png",
+    "width": 150,
+    "height": 200
+  },
+  {
+    "slug": "broheart",
+    "name": "Broheart",
+    "description": "William Wallace from Braveheart",
+    "file": "broheart.png",
+    "width": 143,
+    "height": 200
+  },
+  {
+    "slug": "the-brofessional",
+    "name": "The Brofessional",
+    "description": "Leon \"Leon\" Montana from The Professional",
+    "file": "the-brofessional.png",
+    "width": 135,
+    "height": 200
+  },
+  {
+    "slug": "broden",
+    "name": "Broden",
+    "description": "Raiden",
+    "file": "broden.png",
+    "width": 144,
+    "height": 200
+  },
+  {
+    "slug": "brolander",
+    "name": "Brolander",
+    "description": "Connor MacLeod / Highlander",
+    "file": "brolander.png",
+    "width": 144,
+    "height": 200
+  },
+  {
+    "slug": "tank-bro",
+    "name": "Tank Bro",
+    "description": "Rebecca Buck / Tank Girl",
+    "file": "tank-bro.png",
+    "width": 145,
+    "height": 200
+  },
+  {
+    "slug": "bro-lee",
+    "name": "Bro Lee",
+    "description": "Lee from Enter the Dragon / Bruce Lee",
+    "file": "bro-lee.png",
+    "width": 125,
+    "height": 200
+  },
+  {
+    "slug": "broney-ross",
+    "name": "Broney Ross",
+    "description": "Barney Ross (The Expendabros)",
+    "file": "broney-ross.png",
+    "width": 152,
+    "height": 200
+  },
+  {
+    "slug": "lee-broxmas",
+    "name": "Lee Broxmas",
+    "description": "Lee Christmas (The Expendabros)",
+    "file": "lee-broxmas.png",
+    "width": 152,
+    "height": 200
+  },
+  {
+    "slug": "bronnar-jensen",
+    "name": "Bronnar Jensen",
+    "description": "Gunner Jensen (The Expendabros)",
+    "file": "bronnar-jensen.png",
+    "width": 152,
+    "height": 200
+  },
+  {
+    "slug": "bro-caesar",
+    "name": "Bro Caesar",
+    "description": "Hale Caesar (The Expendabros)",
+    "file": "bro-caesar.png",
+    "width": 152,
+    "height": 200
+  },
+  {
+    "slug": "broctor-death",
+    "name": "Broctor Death",
+    "description": "Doc (The Expendabros)",
+    "file": "broctor-death.png",
+    "width": 152,
+    "height": 200
+  },
+  {
+    "slug": "toll-broad",
+    "name": "Toll Broad",
+    "description": "Toll Road (The Expendabros)",
+    "file": "toll-broad.png",
+    "width": 152,
+    "height": 200
+  },
+  {
+    "slug": "trent-broser",
+    "name": "Trent Broser",
+    "description": "Trench Mauser (The Expendabros)",
+    "file": "trent-broser.png",
+    "width": 142,
+    "height": 200
+  }
+]

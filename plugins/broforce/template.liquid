@@ -1,0 +1,21 @@
+{%- comment -%}
+  Paste this into the TRMNL Private Plugin "Markup" editor for the broforce
+  plugin (Polling strategy, refresh_interval: 5 - the fetch itself is
+  throttled to once/day server-side, see fetch.mjs). Field names match the
+  JSON produced by fetch.mjs.
+
+  "image-dither" is added here (unlike banksy) because these portraits are
+  kept in full colour by generate-portraits.mjs - TRMNL's own dithering is
+  what turns them into a fine-grained e-ink-friendly image at render time.
+{%- endcomment -%}
+
+<div class="layout layout--col layout--center gap--small">
+  <img class="image image--contain image-dither" src="{{ bro.image_url }}" style="max-height: 70%;">
+  <div class="label label--large">{{ bro.name }}</div>
+  <div class="description">{{ bro.description }}</div>
+</div>
+
+<div class="title_bar">
+  <span class="title">BROFORCE</span>
+  <span class="instance">{{ updated_display }}</span>
+</div>
