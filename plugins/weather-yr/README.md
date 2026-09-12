@@ -266,6 +266,20 @@ weather-yr templates now use the same three classes on every icon `<img>`.
 If you add a new icon `<img>` anywhere in this plugin, always include all
 three classes, not just `image`.
 
+**Multiple `<img>` tags sharing a flex row**: adding those classes still
+wasn't enough - the icons kept rendering as the exact same placeholder
+blob regardless of how many were supposed to show (1, 2, or 3, depending
+on `needs_rain_gear`). Looking across every image in this whole repo that
+has ever actually rendered correctly (broforce's portrait, banksy's
+picture, this plugin's own forecast-table icon), each one is always a
+*single* `<img>` with no other `<img>` sitting next to it as a flex
+sibling. The hero row was the one place with up to three `<img>` tags
+side by side inside `<div class="layout layout--row">` elements. Both
+templates now lay out the icons (and, in Full view, the temperature
+between them) as cells of a plain `<table>` instead - one `<img>` per
+`<td>`, matching the forecast table's proven-working structure - rather
+than flex siblings.
+
 The icon sizes in both templates are chosen to visually balance against
 `value--xxlarge` / `value--base` (per the repo's own size notes:
 `value--large` ≈ 58px, `value--xlarge` ≈ 74px) rather than an exact
