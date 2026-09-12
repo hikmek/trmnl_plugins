@@ -47,6 +47,14 @@ const WEEKDAYS = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag", "Lördag",
 
 const ICON_BASE_URL = "https://hikmek.github.io/trmnl_plugins/lunch-lerum/icons";
 
+// "Hemmamat" (home food) - a weekend-only home-cooked menu the family keeps
+// in a shared Google Sheet (Lördag/Söndag, Lunch/Middag columns, one row
+// per ISO week number). Shared as "Anyone with the link" -> Viewer, so the
+// gviz/tq endpoint below returns CSV with no auth/API key needed - same
+// no-credentials approach as every other plugin in this repo.
+const HEMMAMAT_SHEET_ID = "1z0fEGn4A9hKnX-EZ9GycGjbZV_k0jb1_8mA-BRJrUqY";
+const HEMMAMAT_CSV_URL = `https://docs.google.com/spreadsheets/d/${HEMMAMAT_SHEET_ID}/gviz/tq?tqx=out:csv&gid=0`;
+
 // Extensible keyword -> icon mapping. First match wins, so more specific /
 // more visually distinctive categories are listed first (e.g. "köttbullar"
 // before "pasta", so "Kycklingköttbullar serveras med pasta" shows
@@ -106,6 +114,84 @@ function todayKeyStockholm() {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+// ISO 8601 week number (weeks start Monday, week 1 contains the year's
+// first Thursday) for the given Y/M/D - matches the "vecka" numbering used
+// in the hemmamat sheet. Takes plain calendar parts (not a Date+timezone)
+// so it's unambiguous: the caller resolves "today in Stockholm" to a
+// calendar date first, then this only ever does calendar math on it.
+function isoWeekNumber(year, month, day) {
+  const d = new Date(Date.UTC(year, month - 1, day));
+  const isoDayNum = d.getUTCDay() || 7; // Monday=1 .. Sunday=7
+  d.setUTCDate(d.getUTCDate() + 4 - isoDayNum); // shift to this week's Thursday
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+}
+
+// Minimal general-purpose CSV parser (quoted fields, "" for an escaped
+// quote) - enough for the gviz/tq CSV export below without adding a
+// dependency for one small sheet.
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"' && text[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (c === '"') {
+        inQuotes = false;
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ",") {
+      row.push(field);
+      field = "";
+    } else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field);
+      field = "";
+      if (row.length > 1 || row[0] !== "") rows.push(row);
+      row = [];
+    } else {
+      field += c;
+    }
+  }
+  if (field !== "" || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
+
+// Fetches the hemmamat sheet and returns { vecka, lordag: {lunch, middag},
+// sondag: {lunch, middag} } for the given ISO week, or null if the sheet
+// is unreachable or has no row for that week yet - non-fatal either way,
+// so a hiccup here never takes down the skolmat data.
+async function fetchHemmamatForWeek(weekNumber) {
+  try {
+    const res = await fetchWithRetry(HEMMAMAT_CSV_URL, { headers: { "User-Agent": USER_AGENT } });
+    if (!res.ok) throw new Error(`hemmamat sheet request failed: ${res.status} ${res.statusText}`);
+    const rows = parseCsv(await res.text());
+    const dataRows = rows.slice(1); // drop header row
+    const match = dataRows.find((r) => Number(String(r[0]).trim()) === weekNumber);
+    if (!match) return null;
+    const cell = (i) => (match[i] ? match[i].trim() : "") || null;
+    return {
+      vecka: weekNumber,
+      lordag: { lunch: cell(1), middag: cell(2) },
+      sondag: { lunch: cell(3), middag: cell(4) },
+    };
+  } catch (err) {
+    console.error(`Could not fetch hemmamat sheet - showing skolmat only: ${err.message}`);
+    return null;
+  }
 }
 
 async function fetchHtml() {
@@ -214,9 +300,22 @@ async function main() {
   const fallbackWeekday = WEEKDAYS[(new Date(todayKey).getUTCDay() + 6) % 7];
   const isWeekend = fallbackWeekday === "Lördag" || fallbackWeekday === "Söndag";
 
+  // Hemmamat only has weekend rows (Lördag/Söndag columns), so it's only
+  // ever relevant - and only ever fetched - on those two days.
+  let hemmamat = null;
+  if (isWeekend) {
+    const [y, m, d] = todayKey.split("-").map(Number);
+    const weekNumber = isoWeekNumber(y, m, d);
+    const weekData = await fetchHemmamatForWeek(weekNumber);
+    if (weekData) {
+      const dayData = fallbackWeekday === "Lördag" ? weekData.lordag : weekData.sondag;
+      hemmamat = { vecka: weekData.vecka, lunch: dayData.lunch, middag: dayData.middag };
+    }
+  }
+
   const today =
     todayIndex >= 0
-      ? days[todayIndex]
+      ? { ...days[todayIndex], hemmamat: null } // real published school days are always weekdays - no hemmamat
       : {
           date: todayKey,
           weekday: fallbackWeekday,
@@ -230,6 +329,7 @@ async function main() {
           lunch_icon_url: null,
           vegetarian: null,
           vegetarian_icon_url: null,
+          hemmamat,
         };
 
   const upcoming =

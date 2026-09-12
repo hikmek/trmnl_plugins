@@ -1,10 +1,18 @@
-# Plugin #2 - School Lunch (Lerums kommun)
+# Plugin #2 - School Lunch + Hemmamat (Lerums kommun)
 
 TRMNL private plugin (Polling strategy) showing today's school lunch
-(grundskola/gymnasium) for Lerums kommun, plus the next few school days.
+(grundskola/gymnasium) for Lerums kommun, plus the next few school days -
+and, on weekends (when there's no school lunch), the family's own
+"Hemmamat" home-cooked menu instead.
 
-- Data source: [lerum.se lunch menu page](https://lerum.se/utbildning-och-barnomsorg/gemensamt-for-forskolor-och-skolor-i-lerums-kommun/maltider/matsedel-grundskola-och-gymnasium-hostterminen-2026) (Höstterminen 2026)
-- No API - the page is scraped directly (plain server-rendered HTML, no JS needed).
+- Skolmat data source: [lerum.se lunch menu page](https://lerum.se/utbildning-och-barnomsorg/gemensamt-for-forskolor-och-skolor-i-lerums-kommun/maltider/matsedel-grundskola-och-gymnasium-hostterminen-2026) (Höstterminen 2026).
+  No API - the page is scraped directly (plain server-rendered HTML, no JS
+  needed).
+- Hemmamat data source: a shared [Google Sheet](https://docs.google.com/spreadsheets/d/1z0fEGn4A9hKnX-EZ9GycGjbZV_k0jb1_8mA-BRJrUqY/edit?gid=0#gid=0)
+  (one row per ISO week number, Lördag/Söndag × Lunch/Middag columns).
+  **Must be shared as "Anyone with the link" → Viewer** - `fetch.mjs` reads
+  it via the public `gviz/tq` CSV export endpoint, no API key/login
+  involved, same no-credentials approach as every other plugin here.
 
 ## How it works
 
@@ -20,12 +28,16 @@ TRMNL private plugin (Polling strategy) showing today's school lunch
 2. `fetch.mjs` downloads the lerum.se page, parses each day's heading
    (`<h3 class="subheading3">Weekday D Month [note]</h3>`) and its list of
    `<li>Dagens Lunch ...</li>` / `<li>Dagens Gröna ...</li>` items.
-3. It figures out "today" using the **Europe/Stockholm** calendar date and
-   writes `public/lunch-lerum/data.json` with today's menu + a short
-   look-ahead.
-4. GitHub Pages publishes it at:
+3. It figures out "today" using the **Europe/Stockholm** calendar date. If
+   today is Lördag or Söndag (school never publishes weekend menus), it
+   also fetches the hemmamat sheet, computes today's **ISO 8601 week
+   number** (Sweden's usual week numbering - matches the sheet's "vecka"
+   column), and looks up that week's row.
+4. It writes `public/lunch-lerum/data.json` with today's menu (+ hemmamat,
+   on weekends) and a short skolmat look-ahead.
+5. GitHub Pages publishes it at:
    `https://hikmek.github.io/trmnl_plugins/lunch-lerum/data.json`
-5. Your TRMNL device (Private Plugin, Polling strategy) fetches that JSON
+6. Your TRMNL device (Private Plugin, Polling strategy) fetches that JSON
    and renders it with `template.liquid`.
 
 ## One-time setup
@@ -55,17 +67,33 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
     "lunch": "Panerad fisk med remouladsås och kokt potatis",
     "lunch_icon_url": null, // set only if the dish text matches a known keyword (see below)
     "vegetarian": null,    // null if only one option was published that day
-    "vegetarian_icon_url": null
+    "vegetarian_icon_url": null,
+    "hemmamat": null       // set only on Lördag/Söndag when the sheet has a row for this week - see below
   },
   "upcoming": [
-    // next 4 days found on the page after today, same shape as `today`
+    // next 4 school days found on the page after today, same shape as `today`
+    // (always weekdays - hemmamat is always null here, the lookahead doesn't span weekends)
   ]
 }
 ```
 
-If a date isn't found on the page at all (e.g. outside the term, or a
-weekend), `today.note` becomes `"No menu published for this date"` and
-`lunch`/`vegetarian` are `null`.
+If a weekday isn't found on the page at all (outside the term, or a gap in
+what's published), `today.note` becomes `"No menu published for this
+date"` and `lunch`/`vegetarian` are `null`. On an actual weekend, `today.note`
+is instead `"HELG !! = ingen skolmat"` and `today.hemmamat` is filled in
+(when the sheet has that week's row):
+
+```jsonc
+"hemmamat": {
+  "vecka": 37,             // ISO week number, matches the sheet's "vecka" column
+  "lunch": "soppa på spik",  // that day's (Lördag or Söndag, whichever today is) Lunch column
+  "middag": "spädgris"       // ...and Middag column
+}
+```
+
+`hemmamat` stays `null` on weekends too if the sheet has no row yet for the
+current ISO week, or if the sheet request fails - it never blocks skolmat
+data from publishing.
 
 ## Pixel-art food icons
 
@@ -125,3 +153,11 @@ node plugins/lunch-lerum/fetch.mjs
   `Dagens Gröna` item (either not yet published, or a note-only day like a
   holiday) - these come through as `null` and the template shows "-" / a
   fallback message.
+- **Hemmamat needs its sheet's row filled in ahead of time**: whoever
+  maintains the sheet adds a new "vecka" row before that weekend arrives.
+  If a weekend's row is missing, `hemmamat` is just `null` and the Full
+  view shows "- (helgmeny, visas lördag-söndag)" - no error, just no data
+  yet.
+- If the sheet's sharing is ever changed back to "Restricted", the
+  `gviz/tq` request starts failing (logged, non-fatal) and hemmamat quietly
+  goes back to always-null until sharing is fixed.

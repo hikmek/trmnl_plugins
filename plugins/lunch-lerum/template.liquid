@@ -9,6 +9,8 @@
 
 <div class="layout layout--col gap--large">
 
+  <div class="label">Skolmatn:</div>
+
   {% if today.note %}
   <div class="item">
     <div class="label">{{ today.weekday }} {{ today.date }} · {{ today.note }}</div>
@@ -36,6 +38,32 @@
   {% elsif today.note == blank %}
   <div class="item">
     <div class="value">No lunch published for today</div>
+  </div>
+  {% endif %}
+
+  <div class="divider"></div>
+
+  <div class="label">Hemmamatn:{% if today.hemmamat %} vecka {{ today.hemmamat.vecka }}{% endif %}</div>
+
+  {% if today.hemmamat %}
+  <div class="layout layout--row gap--large">
+    {% if today.hemmamat.lunch %}
+    <div class="item layout layout--col layout--center gap--xsmall">
+      <div class="label">Lunch</div>
+      <div class="value value--large" style="text-align: center;">{{ today.hemmamat.lunch }}</div>
+    </div>
+    {% endif %}
+
+    {% if today.hemmamat.middag %}
+    <div class="item layout layout--col layout--center gap--xsmall">
+      <div class="label">Middag</div>
+      <div class="value value--large" style="text-align: center;">{{ today.hemmamat.middag }}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="item">
+    <div class="value">- (helgmeny, visas lördag-söndag)</div>
   </div>
   {% endif %}
 
