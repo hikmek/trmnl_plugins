@@ -23,10 +23,11 @@ only room for one lunch-side item here, so it stays "today only".
 
 "Dagens kock" (right column): unrelated in content to the lunch data -
 it's today's random pick from the broforce plugin's own portrait roster
-(see fetch.mjs's pickDagensKock()), shown picture-then-name exactly like
-broforce/template.quadrant.liquid does for its own Bro of the day
-("image image--contain image-dither", same max-height, plain label below,
-no description - description is only shown in broforce's own Full view).
+(see fetch.mjs's pickDagensKock()), shown as a "Dagens kock:" label,
+picture, name, and a short Swedish description underneath (fetch.mjs
+translates broforce's English description via
+DAGENS_KOCK_DESCRIPTIONS_SV - broforce's own Quadrant/Full stay English,
+this translation is lunch-lerum-only).
 {%- endcomment -%}
 
 <div class="layout layout--row gap--large">
@@ -42,9 +43,9 @@ no description - description is only shown in broforce's own Full view).
     {% elsif today.is_weekend %}
     <div class="label">Hemmamat {{ today.weekday }}</div>
     {% if today.hemmamat and today.weekday == "Lördag" %}
-    <div class="value value--small" style="text-align: center;">{{ today.hemmamat.lordag.lunch | truncate: 40 }}</div>
+    <div class="value value--small" style="text-align: center;">{{ today.hemmamat.lordag.lunch | truncate: 28 }} / {{ today.hemmamat.lordag.middag | truncate: 28 }}</div>
     {% elsif today.hemmamat %}
-    <div class="value value--small" style="text-align: center;">{{ today.hemmamat.sondag.lunch | truncate: 40 }}</div>
+    <div class="value value--small" style="text-align: center;">{{ today.hemmamat.sondag.lunch | truncate: 28 }} / {{ today.hemmamat.sondag.middag | truncate: 28 }}</div>
     {% else %}
     <div class="value">{{ today.note }}</div>
     {% endif %}
@@ -58,8 +59,10 @@ no description - description is only shown in broforce's own Full view).
 
   {% if today.dagens_kock %}
   <div class="layout layout--col layout--center gap--xsmall" style="flex: 1;">
-    <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 75%;">
+    <div class="label">Dagens kock:</div>
+    <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 50%;">
     <div class="label">{{ today.dagens_kock.name }}</div>
+    <div class="description" style="text-align: center;">{{ today.dagens_kock.description | truncate: 45 }}</div>
   </div>
   {% endif %}
 </div>
