@@ -17,7 +17,10 @@
      upcoming weekend.
   3. Dagens kockn - today's random pick from the broforce portrait roster
      (unrelated in content to the other two columns - see fetch.mjs's
-     pickDagensKock()), picture + name, same as broforce's own Quadrant.
+     pickDagensKock()): "Dagens kock:" label, picture, name, and a Swedish
+     description underneath (fetch.mjs translates broforce's English
+     description via DAGENS_KOCK_DESCRIPTIONS_SV - lunch-lerum-only, does
+     not touch broforce's own English Full view).
 {%- endcomment -%}
 
 <div class="layout layout--col gap--large">
@@ -53,10 +56,11 @@
     </div>
 
     <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
-      <div class="label">Dagens kockn</div>
+      <div class="label">Dagens kock:</div>
       {% if today.dagens_kock %}
-      <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 55%;">
+      <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 45%;">
       <div class="value value--small" style="text-align: center;">{{ today.dagens_kock.name }}</div>
+      <div class="description" style="text-align: center;">{{ today.dagens_kock.description }}</div>
       {% else %}
       <div class="value">-</div>
       {% endif %}

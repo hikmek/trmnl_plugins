@@ -15,8 +15,9 @@ view (Quadrant only has room for skolmatn + dagens kock - see below):
    just on the weekend itself, since a weekday's current ISO week already
    covers its upcoming weekend.
 3. **Dagens kock** (right column) - unrelated in content to the other two:
-   today's random pick from the broforce plugin's portrait roster, picture
-   + name, shown in both Full and Quadrant views.
+   today's random pick from the broforce plugin's portrait roster, shown
+   with a "Dagens kock:" label, picture, name, and a short **Swedish**
+   description underneath, in both Full and Quadrant views.
 
 - Skolmat data source: [lerum.se lunch menu page](https://lerum.se/utbildning-och-barnomsorg/gemensamt-for-forskolor-och-skolor-i-lerums-kommun/maltider/matsedel-grundskola-och-gymnasium-hostterminen-2026) (Höstterminen 2026).
   No API - the page is scraped directly (plain server-rendered HTML, no JS
@@ -30,7 +31,10 @@ view (Quadrant only has room for skolmatn + dagens kock - see below):
 - Dagens kock data source: `../broforce/portraits/manifest.json` - read
   straight off disk (both plugins live in this same repo checkout), no
   network call. See [plugin #5's README](../broforce/README.md) for what's
-  in that roster.
+  in that roster. The manifest's `description` field is English (shared
+  with broforce's own Full view); `fetch.mjs` translates it to Swedish via
+  a `DAGENS_KOCK_DESCRIPTIONS_SV` lookup keyed by slug, kept in
+  lunch-lerum's own `fetch.mjs` so broforce's own display is untouched.
 
 ## How it works
 
@@ -109,7 +113,7 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
     "dagens_kock": {       // today's random pick from the broforce roster - every day, not just weekends
       "slug": "brominator",
       "name": "Brominator",
-      "description": "T-800 from the Terminator franchise",
+      "description": "T-800 från Terminator-filmerna", // Swedish - translated from broforce's English manifest, see DAGENS_KOCK_DESCRIPTIONS_SV
       "image_url": "https://hikmek.github.io/trmnl_plugins/broforce/portraits/brominator.png"
     }
   },

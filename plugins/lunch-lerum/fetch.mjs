@@ -65,6 +65,58 @@ const HEMMAMAT_CSV_URL = `https://docs.google.com/spreadsheets/d/${HEMMAMAT_SHEE
 const DAGENS_KOCK_MANIFEST_PATH = path.join(__dirname, "..", "broforce", "portraits", "manifest.json");
 const DAGENS_KOCK_BASE_URL = "https://hikmek.github.io/trmnl_plugins/broforce/portraits";
 
+// broforce's own manifest.json only carries an English description (it's
+// shared with broforce's own Full view, which stays English). Dagens kock
+// is lunch-lerum-only content, so the Swedish translation lives here
+// rather than touching broforce's manifest/generator. Keyed by slug so it
+// survives manifest regeneration as long as slugs stay stable; falls back
+// to the English text (see pickDagensKock()) for any future bro added to
+// the roster before a translation is added here.
+const DAGENS_KOCK_DESCRIPTIONS_SV = {
+  rambro: "John Rambo",
+  brommando: "John Matrix från Commando",
+  "ba-broracus": "B.A. Baracus",
+  "brodell-walker": "Cordell Walker",
+  "bro-hard": "John McClane från Die Hard",
+  macbrover: "Angus MacGyver",
+  brade: "Blade",
+  "bro-dredd": "Domare Dredd",
+  "bro-in-black": "James Edwards (Agent J) från Men in Black",
+  "snake-broskin": "Snake Plissken",
+  "dirty-brory": "\"Dirty\" Harry Callahan",
+  brominator: "T-800 från Terminator-filmerna",
+  brobocop: "Alex Murphy från RoboCop",
+  "indianna-brones": "Indiana Jones",
+  "ash-brolliams": "Ash Williams från Evil Dead",
+  "mr-anderbro": "Thomas A. Anderson / Neo",
+  "boondock-bros": "Connor och Murphy MacManus från Boondock Saints",
+  brochete: "Machete Cortez från Machete",
+  "bronan-the-brobarian": "Conan Barbaren",
+  "ellen-ripbro": "Ellen Ripley från Alien",
+  brocketeer: "Cliff Secord från Rocketeer",
+  timebro: "Max Walker från Timecop",
+  "broniversal-soldier": "Luc Deveraux / GR44 från Universal Soldier",
+  "col-james-broddock": "Överste James Braddock från Missing in Action",
+  "cherry-broling": "Cherry Darling från Planet Terror",
+  "bro-max": "Max Rockatansky från Mad Max",
+  "the-brode": "Beatrix Kiddo / Bruden",
+  "double-bro-seven": "James Bond / 007",
+  brodator: "Predatorn",
+  broheart: "William Wallace från Braveheart",
+  "the-brofessional": "Leon Montana från filmen Leon",
+  broden: "Raiden",
+  brolander: "Connor MacLeod / Highlander",
+  "tank-bro": "Rebecca Buck / Tank Girl",
+  "bro-lee": "Lee från Enter the Dragon / Bruce Lee",
+  "broney-ross": "Barney Ross (The Expendabros)",
+  "lee-broxmas": "Lee Christmas (The Expendabros)",
+  "bronnar-jensen": "Gunner Jensen (The Expendabros)",
+  "bro-caesar": "Hale Caesar (The Expendabros)",
+  "broctor-death": "Doc (The Expendabros)",
+  "toll-broad": "Toll Road (The Expendabros)",
+  "trent-broser": "Trench Mauser (The Expendabros)",
+};
+
 async function pickDagensKock() {
   try {
     const manifest = JSON.parse(await readFile(DAGENS_KOCK_MANIFEST_PATH, "utf8"));
@@ -73,7 +125,7 @@ async function pickDagensKock() {
     return {
       slug: pick.slug,
       name: pick.name,
-      description: pick.description,
+      description: DAGENS_KOCK_DESCRIPTIONS_SV[pick.slug] || pick.description,
       image_url: `${DAGENS_KOCK_BASE_URL}/${pick.file}`,
     };
   } catch (err) {
