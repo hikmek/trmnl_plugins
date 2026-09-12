@@ -66,7 +66,9 @@ temperature" below.
     "clothing_icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/clothing-tshirt-jacket.png",
     "clothing_text": "T-shirt & tunn jacka",
     "needs_rain_gear": false,          // true if rain/sleet/thunder is indicated now or in the next hour
-    "rain_gear_icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/clothing-umbrella.png"
+    "rain_gear_icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/clothing-umbrella.png",
+    "rain_starts_at": null,            // ISO timestamp of the first upcoming rain within 60 min, or null
+    "rain_forecast_text": "Inget regn i sikte!" // or "Det börjar regna kl 19:30 idag!"
   },
   "today": { "high": 16.5, "low": 9.8 },
   "forecast": [
@@ -141,6 +143,31 @@ temperature (center, `value--xxlarge`) - clothing + rain-gear icons
 idea at a smaller size (36px icons, `value--base`), but only shows the
 outfit icon (no separate rain-gear icon - there's only room for one icon
 on the right in that small a pane).
+
+## Rain forecast text
+
+Below the icon/temperature row, `current.rain_forecast_text` gives a
+plain-language heads-up: `findRainStart()` in `fetch.mjs` scans yr.no's
+near-term hourly timeseries entries (the same `expectsRain()` check used
+for the rain-gear icon) for the first one, within the next 60 minutes,
+that indicates rain. If one is found, the text is `"Det börjar regna kl
+HH:MM idag!"` using that entry's local time; otherwise it's `"Inget regn i
+sikte!"`. `current.rain_starts_at` has the raw ISO timestamp (or `null`)
+if you want to use it separately. Shown centered in both Full and
+Quadrant views.
+
+**Note on the clothing icon PNGs**: they must be saved as 1-bit
+**palette/indexed** PNGs (`colorType 3`), matching the existing weather
+icons exactly - a 1-bit **grayscale** PNG (`colorType 0`, which is what a
+naive `Pillow` `mode "1"` save produces) is a different, valid PNG variant
+that TRMNL's rendering pipeline apparently can't decode: it silently drops
+the image AND corrupts the neighboring text in the same row, rather than
+just showing a broken-image icon. If you regenerate the clothing icons
+outside of `generate-clothing-icons.mjs` (which uses `sharp` and produces
+the correct palette format automatically), re-encode with something like
+`Image.open(path).convert("L").convert("P", palette=Image.ADAPTIVE,
+colors=2)` before saving, and check with `file icons/*.png` that it says
+"1-bit colormap", not "1-bit grayscale".
 
 **Important**: the temperature keeps a real TRMNL `value--*` class rather
 than a custom inline `font-size`. TRMNL renders "value" numbers through

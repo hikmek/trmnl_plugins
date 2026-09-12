@@ -20,6 +20,10 @@
   exact pixel match. The extra rain-gear icon (shown in Full view when
   current.needs_rain_gear is true) is skipped here - there's only room for
   one icon on the right in this small a pane.
+
+  Rain forecast text: current.rain_forecast_text ("Inget regn i sikte!" or
+  "Det börjar regna kl HH:MM idag!" - see fetch.mjs's findRainStart()),
+  centered below everything else.
 {%- endcomment -%}
 
 <div class="layout layout--col layout--center gap--xsmall" style="font-family: 'Inter', sans-serif;">
@@ -30,6 +34,7 @@
   </div>
   <div class="label">{{ current.condition_text }}</div>
   <div class="description">H {{ today.high }}° / L {{ today.low }}°</div>
+  <div class="description">{{ current.rain_forecast_text }}</div>
 </div>
 
 <div class="title_bar" style="font-family: 'Inter', sans-serif;">
