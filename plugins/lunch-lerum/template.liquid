@@ -5,67 +5,64 @@
 
   View-only markup: no <div class="screen">/"view"> wrappers needed -
   TRMNL's platform supplies those for private plugins.
+
+  Three-column layout, left to right:
+  1. Skolmatn - the school's VEGETARIAN option only (today.vegetarian) on
+     weekdays; on Lördag/Söndag (today.is_weekend) there's never a school
+     menu at all, so this column shows "HELGn = Ingen skolmatn" instead.
+  2. Hemmamatn - the family's home-cooked weekend menu (from the shared
+     Google Sheet), showing BOTH Lördag and Söndag (Lunch + Middag each)
+     for the current ISO week - shown every day, not just on the weekend
+     itself, since a weekday's current ISO week already covers its
+     upcoming weekend.
+  3. Dagens kockn - today's random pick from the broforce portrait roster
+     (unrelated in content to the other two columns - see fetch.mjs's
+     pickDagensKock()), picture + name, same as broforce's own Quadrant.
 {%- endcomment -%}
 
 <div class="layout layout--col gap--large">
 
-  <div class="label">Skolmatn:</div>
-
-  {% if today.note %}
-  <div class="item">
-    <div class="label">{{ today.weekday }} {{ today.date }} · {{ today.note }}</div>
-  </div>
-  {% endif %}
-
-  {% if today.lunch or today.vegetarian %}
   <div class="layout layout--row gap--large">
-    {% if today.lunch %}
-    <div class="item layout layout--col layout--center gap--xsmall">
-      <div class="label">Dagens Lunch</div>
-      <div class="value value--large" style="text-align: center;">{{ today.lunch }}</div>
-      <img class="image" src="{{ today.lunch_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
-    </div>
-    {% endif %}
 
-    {% if today.vegetarian %}
-    <div class="item layout layout--col layout--center gap--xsmall">
-      <div class="label">Dagens Gröna</div>
+    <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
+      <div class="label">Skolmatn</div>
+      {% if today.is_weekend %}
+      <div class="value" style="text-align: center;">{{ today.note }}</div>
+      {% elsif today.vegetarian %}
       <div class="value value--large" style="text-align: center;">{{ today.vegetarian }}</div>
       <img class="image" src="{{ today.vegetarian_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
+      {% elsif today.note %}
+      <div class="value" style="text-align: center;">{{ today.note }}</div>
+      {% else %}
+      <div class="value">Ingen vegetarisk rätt idag</div>
+      {% endif %}
     </div>
-    {% endif %}
-  </div>
-  {% elsif today.note == blank %}
-  <div class="item">
-    <div class="value">No lunch published for today</div>
-  </div>
-  {% endif %}
 
-  <div class="divider"></div>
-
-  <div class="label">Hemmamatn:{% if today.hemmamat %} vecka {{ today.hemmamat.vecka }}{% endif %}</div>
-
-  {% if today.hemmamat %}
-  <div class="layout layout--row gap--large">
-    {% if today.hemmamat.lunch %}
-    <div class="item layout layout--col layout--center gap--xsmall">
-      <div class="label">Lunch</div>
-      <div class="value value--large" style="text-align: center;">{{ today.hemmamat.lunch }}</div>
+    <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
+      <div class="label">Hemmamatn{% if today.hemmamat %} · v{{ today.hemmamat.vecka }}{% endif %}</div>
+      {% if today.hemmamat %}
+      <div class="value" style="text-align: center;">
+        <strong>Lör:</strong> {{ today.hemmamat.lordag.lunch | default: "-" }} / {{ today.hemmamat.lordag.middag | default: "-" }}
+      </div>
+      <div class="value" style="text-align: center;">
+        <strong>Sön:</strong> {{ today.hemmamat.sondag.lunch | default: "-" }} / {{ today.hemmamat.sondag.middag | default: "-" }}
+      </div>
+      {% else %}
+      <div class="value">Ingen hemmamat inlagd än</div>
+      {% endif %}
     </div>
-    {% endif %}
 
-    {% if today.hemmamat.middag %}
-    <div class="item layout layout--col layout--center gap--xsmall">
-      <div class="label">Middag</div>
-      <div class="value value--large" style="text-align: center;">{{ today.hemmamat.middag }}</div>
+    <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
+      <div class="label">Dagens kockn</div>
+      {% if today.dagens_kock %}
+      <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 55%;">
+      <div class="value value--small" style="text-align: center;">{{ today.dagens_kock.name }}</div>
+      {% else %}
+      <div class="value">-</div>
+      {% endif %}
     </div>
-    {% endif %}
+
   </div>
-  {% else %}
-  <div class="item">
-    <div class="value">- (helgmeny, visas lördag-söndag)</div>
-  </div>
-  {% endif %}
 
   <div class="divider"></div>
 

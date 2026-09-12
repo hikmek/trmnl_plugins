@@ -327,18 +327,14 @@ async function main() {
   const fallbackWeekday = WEEKDAYS[(new Date(todayKey).getUTCDay() + 6) % 7];
   const isWeekend = fallbackWeekday === "Lördag" || fallbackWeekday === "Söndag";
 
-  // Hemmamat only has weekend rows (Lördag/Söndag columns), so it's only
-  // ever relevant - and only ever fetched - on those two days.
-  let hemmamat = null;
-  if (isWeekend) {
-    const [y, m, d] = todayKey.split("-").map(Number);
-    const weekNumber = isoWeekNumber(y, m, d);
-    const weekData = await fetchHemmamatForWeek(weekNumber);
-    if (weekData) {
-      const dayData = fallbackWeekday === "Lördag" ? weekData.lordag : weekData.sondag;
-      hemmamat = { vecka: weekData.vecka, lunch: dayData.lunch, middag: dayData.middag };
-    }
-  }
+  // Hemmamat is shown as its own always-present column now (not just on
+  // the weekend it covers), with BOTH Lördag and Söndag side by side - so
+  // it's fetched every day, for whichever ISO week "today" falls in. ISO
+  // weeks run Monday-Sunday, so a weekday's current week already IS the
+  // week containing its upcoming Lördag/Söndag - no special-casing needed.
+  const [todayYear, todayMonth, todayDay] = todayKey.split("-").map(Number);
+  const weekNumber = isoWeekNumber(todayYear, todayMonth, todayDay);
+  const hemmamat = await fetchHemmamatForWeek(weekNumber); // { vecka, lordag: {lunch, middag}, sondag: {...} } or null
 
   // Independent of weekday/weekend - picked fresh once a day, same as
   // everything else in this function (gated by the shouldSkipDailyFetch
@@ -347,16 +343,17 @@ async function main() {
 
   const today =
     todayIndex >= 0
-      ? { ...days[todayIndex], hemmamat: null, dagens_kock: dagensKock } // real published school days are always weekdays - no hemmamat
+      ? { ...days[todayIndex], is_weekend: false, hemmamat, dagens_kock: dagensKock } // real published school days are always weekdays
       : {
           date: todayKey,
           weekday: fallbackWeekday,
+          is_weekend: isWeekend,
           // Weekends never have a published menu (school's out) - that's
           // expected, not a scraping gap, so it gets its own Swedish note
           // instead of the generic "no menu found" message below (which is
           // for real gaps: a weekday that's out of term range, or a date
           // the page just doesn't have yet).
-          note: isWeekend ? "HELG !! = ingen skolmat" : "No menu published for this date",
+          note: isWeekend ? "HELGn = Ingen skolmatn" : "No menu published for this date",
           lunch: null,
           lunch_icon_url: null,
           vegetarian: null,
