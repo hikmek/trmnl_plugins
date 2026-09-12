@@ -12,26 +12,51 @@ through all the way to the "No lunch info" fallback even though a valid
 dish existed. Now it shows whichever of the two is actually available,
 preferring Lunch when both exist (Full view shows both side by side;
 Quadrant only has room for one).
+
+Weekend note: skolmat never has data on Lördag/Söndag, so on weekends
+this pane shows the hemmamat (home food) dish instead of the generic
+"HELG !!" text - more useful in this small a space than a message
+that's just explaining an absence. Full view still shows both
+"Skolmatn:"/"Hemmamatn:" sections stacked; there's only room for one here.
+
+"Dagens kock" (right column): unrelated in content to the lunch data -
+it's today's random pick from the broforce plugin's own portrait roster
+(see fetch.mjs's pickDagensKock()), shown picture-then-name exactly like
+broforce/template.quadrant.liquid does for its own Bro of the day
+("image image--contain image-dither", same max-height, plain label below,
+no description - description is only shown in broforce's own Full view).
 {%- endcomment -%}
 
-<div class="layout layout--col layout--center gap--xsmall">
-  {% if today.lunch %}
-  <div class="label">Dagens Lunch</div>
-  <div class="value value--small" style="text-align: center;">{{ today.lunch | truncate: 40 }}</div>
-  <img class="image" src="{{ today.lunch_icon_url }}" width="32" height="32" style="width: 32px; height: 32px;">
-  {% elsif today.vegetarian %}
-  <div class="label">Dagens Gröna</div>
-  <div class="value value--small" style="text-align: center;">{{ today.vegetarian | truncate: 40 }}</div>
-  <img class="image" src="{{ today.vegetarian_icon_url }}" width="32" height="32" style="width: 32px; height: 32px;">
-  {% elsif today.note %}
-  <div class="label">{{ today.weekday }}</div>
-  <div class="value">{{ today.note }}</div>
-  {% else %}
-  <div class="value">No lunch info</div>
+<div class="layout layout--row gap--large">
+  <div class="layout layout--col layout--center gap--xsmall" style="flex: 1;">
+    {% if today.lunch %}
+    <div class="label">Dagens Lunch</div>
+    <div class="value value--small" style="text-align: center;">{{ today.lunch | truncate: 40 }}</div>
+    <img class="image" src="{{ today.lunch_icon_url }}" width="32" height="32" style="width: 32px; height: 32px;">
+    {% elsif today.vegetarian %}
+    <div class="label">Dagens Gröna</div>
+    <div class="value value--small" style="text-align: center;">{{ today.vegetarian | truncate: 40 }}</div>
+    <img class="image" src="{{ today.vegetarian_icon_url }}" width="32" height="32" style="width: 32px; height: 32px;">
+    {% elsif today.hemmamat %}
+    <div class="label">Hemmamat {{ today.weekday }}</div>
+    <div class="value value--small" style="text-align: center;">{{ today.hemmamat.lunch | truncate: 40 }}</div>
+    {% elsif today.note %}
+    <div class="label">{{ today.weekday }}</div>
+    <div class="value">{{ today.note }}</div>
+    {% else %}
+    <div class="value">No lunch info</div>
+    {% endif %}
+  </div>
+
+  {% if today.dagens_kock %}
+  <div class="layout layout--col layout--center gap--xsmall" style="flex: 1;">
+    <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 75%;">
+    <div class="label">{{ today.dagens_kock.name }}</div>
+  </div>
   {% endif %}
 </div>
 
 <div class="title_bar">
-  <span class="title">Skolmat</span>
+  <span class="title">Matn</span>
   <span class="instance">{{ updated_display }}</span>
 </div>
