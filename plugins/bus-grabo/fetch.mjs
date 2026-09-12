@@ -12,20 +12,21 @@
 //      walk from Nils Ericson Terminalen, on its way further south to
 //      Kullavik/Särö).
 //
-// Also computes a live "where is the bus right now" position along the
-// Sjövik -> Mjörn -> Gråbo stretch, using Västtrafik's own real-time
-// vehicle-position endpoint (GET /positions?lowerLeftLat=...&
-// lineDesignations=X3 - a bounding-box query, undocumented in the public
-// developer portal pages but present in the v4 API's OpenAPI schema and
-// backed by the same OAuth credentials as everything else here). This is
-// genuine GPS, not a schedule estimate - confirmed via the API's own
-// swagger model docs (JourneyPositionApiModel: latitude/longitude/line/
-// direction/detailsReference), unlike Trafiklab's public GTFS-Realtime
-// mirror, which explicitly does NOT carry real-time vehicle positions for
-// Västtrafik (static schedule data only, per Trafiklab's own coverage
-// table) - that mirror was the first thing checked and is a dead end for
-// this operator; the operator's own "Planera Resa" v4 API is the one that
-// actually has it.
+// Also computes, for EACH of the two departures above, a live "where is
+// this specific bus right now" position along the Sjövik -> Mjörn -> Gråbo
+// stretch, using Västtrafik's own real-time vehicle-position endpoint
+// (GET /positions?lowerLeftLat=...&lineDesignations=X3 - a bounding-box
+// query, undocumented in the public developer portal pages but present in
+// the v4 API's OpenAPI schema and backed by the same OAuth credentials as
+// everything else here). This is genuine GPS, not a schedule estimate -
+// confirmed via the API's own swagger model docs (JourneyPositionApiModel:
+// latitude/longitude/name/line/direction/detailsReference), unlike
+// Trafiklab's public GTFS-Realtime mirror, which explicitly does NOT carry
+// real-time vehicle positions for Västtrafik (static schedule data only,
+// per Trafiklab's own coverage table) - that mirror was the first thing
+// checked and is a dead end for this operator; the operator's own "Planera
+// Resa" v4 API is the one that actually has it. Each departure is matched
+// to its own live fix by `detailsReference` (see describeDeparturePosition()).
 //
 // The three route points (Sjövik busstation, Mjörn, Gråbo busstation) are
 // resolved to lat/long at fetch time via GET /locations/by-text, rather
@@ -185,6 +186,9 @@ function formatDeparture(raw, nowMs) {
     minutes_until: minutesUntil(estimated, nowMs),
     delay_minutes: delayMinutes,
     is_cancelled: !!raw.isCancelled,
+    // Links this departure to a live GPS fix from GET /positions (same
+    // field name on both endpoints - see resolvePositionsForDepartures()).
+    details_reference: raw.detailsReference ?? null,
   };
 }
 
@@ -282,81 +286,77 @@ function computeRouteProgress(routePoints, busPoint) {
   return best;
 }
 
-// --- Live position lookup + progress summary ---
-
-async function computeBusPosition(token) {
-  // mjornFraction is used to draw/describe the route even if the live
-  // lookup below fails, so compute it (and fall back to a visual midpoint)
-  // independently of the try block's success.
-  let mjornFraction = 0.5;
-
-  try {
-    const routePoints = [];
-    for (const query of ROUTE_STOP_QUERIES) {
-      routePoints.push(await resolveLocation(token, query));
-    }
-    // Mjörn is always index 1 in the base 3-point route (Sjövik/Mjörn/Gråbo);
-    // if intermediate stops are ever added to ROUTE_STOP_QUERIES between
-    // Sjövik and Mjörn (see the module-level NOTE), update this index too.
-    mjornFraction = fractionAtStop(routePoints, 1);
-
-    const lats = routePoints.map((p) => p.lat);
-    const lons = routePoints.map((p) => p.lon);
-    const pad = 0.02; // ~2km buffer around the route so a bus just past either end is still caught
-
-    const positions = await getPositions(token, {
-      minLat: Math.min(...lats) - pad,
-      maxLat: Math.max(...lats) + pad,
-      minLon: Math.min(...lons) - pad,
-      maxLon: Math.max(...lons) + pad,
-      lineDesignations: [LINE_FILTER],
-    });
-
-    const candidate = positions.find(
-      (p) => typeof p.latitude === "number" && typeof p.longitude === "number"
-    );
-
-    if (!candidate) {
-      return {
-        available: false,
-        reason: "no_active_bus",
-        mjorn_fraction: mjornFraction,
-        progress: null,
-        status_text: "Ingen X3-buss på sträckan just nu.",
-      };
-    }
-
-    const { progress, distMeters } = computeRouteProgress(routePoints, {
-      lat: candidate.latitude,
-      lon: candidate.longitude,
-    });
-
-    if (distMeters > MAX_ROUTE_DEVIATION_METERS) {
-      return {
-        available: false,
-        reason: "off_segment",
-        mjorn_fraction: mjornFraction,
-        progress: null,
-        status_text: "Bussen är utanför Sjövik-Gråbo just nu.",
-      };
-    }
-
-    const status_text =
-      progress < mjornFraction
-        ? `Bussen är mellan Sjövik och Mjörn (${Math.round(progress * 100)}%)`
-        : `Bussen är mellan Mjörn och Gråbo (${Math.round(progress * 100)}%)`;
-
-    return { available: true, mjorn_fraction: mjornFraction, progress, status_text };
-  } catch (err) {
-    console.error("bus_position computation failed:", err);
-    return {
-      available: false,
-      reason: "error",
-      mjorn_fraction: mjornFraction,
-      progress: null,
-      status_text: "Buss-position kunde inte hämtas just nu.",
-    };
+// --- Live position lookup + per-departure matching ---
+//
+// Resolves the route once (Sjövik/Mjörn/Gråbo coordinates + every X3
+// vehicle GPS fix currently in that bounding box), then each departure is
+// matched to its own live fix by `detailsReference` - the same field name
+// Västtrafik uses on both the departures endpoint (there: "the reference
+// to the service journey") and the positions endpoint (there: "journey
+// reference"), which is exactly the kind of shared identifier meant to
+// link the two. This hasn't been confirmed against a live response from
+// this environment (no credentials here - see the top-of-file note), so
+// if `bus_location` never resolves after deploying this, check first
+// whether `detailsReference` on a /positions result actually equals the
+// one from /departures for the same trip.
+async function resolveRoute(token) {
+  const routePoints = [];
+  for (const query of ROUTE_STOP_QUERIES) {
+    routePoints.push(await resolveLocation(token, query));
   }
+  // Mjörn is always index 1 in the base 3-point route (Sjövik/Mjörn/Gråbo);
+  // if intermediate stops are ever added to ROUTE_STOP_QUERIES between
+  // Sjövik and Mjörn (see the module-level NOTE), update this index too.
+  const mjornFraction = fractionAtStop(routePoints, 1);
+
+  const lats = routePoints.map((p) => p.lat);
+  const lons = routePoints.map((p) => p.lon);
+  const pad = 0.02; // ~2km buffer around the route so a bus just past either end is still caught
+
+  const positions = await getPositions(token, {
+    minLat: Math.min(...lats) - pad,
+    maxLat: Math.max(...lats) + pad,
+    minLon: Math.min(...lons) - pad,
+    maxLon: Math.max(...lons) + pad,
+    lineDesignations: [LINE_FILTER],
+  });
+
+  return { routePoints, mjornFraction, positions };
+}
+
+// Finds the live GPS fix for one specific departure (by detailsReference)
+// and turns it into a human status line + 0..1 route progress, or a clear
+// "not found"/"off route" explanation instead of silently showing nothing.
+function describeDeparturePosition(route, departure) {
+  if (!departure) return null;
+  if (!route) {
+    return { bus_name: null, location_text: "Position kunde inte beräknas.", progress: null };
+  }
+  if (!departure.details_reference) {
+    return { bus_name: null, location_text: "Ingen positionsreferens för avgången.", progress: null };
+  }
+
+  const position = route.positions.find((p) => p.detailsReference === departure.details_reference);
+  if (!position || typeof position.latitude !== "number" || typeof position.longitude !== "number") {
+    return { bus_name: null, location_text: "Position okänd (bussen är inte på väg än).", progress: null };
+  }
+
+  const busName = position.name || position.line?.shortName || null;
+  const { progress, distMeters } = computeRouteProgress(route.routePoints, {
+    lat: position.latitude,
+    lon: position.longitude,
+  });
+
+  if (distMeters > MAX_ROUTE_DEVIATION_METERS) {
+    return { bus_name: busName, location_text: "Utanför Sjövik-Gråbo just nu.", progress: null };
+  }
+
+  const location_text =
+    progress < route.mjornFraction
+      ? `Mellan Sjövik och Mjörn (${Math.round(progress * 100)}%)`
+      : `Mellan Mjörn och Gråbo (${Math.round(progress * 100)}%)`;
+
+  return { bus_name: busName, location_text, progress };
 }
 
 // --- Position-map PNG rendering ---
@@ -407,7 +407,12 @@ function fillCircle(buf, width, height, cx, cy, r, color) {
   }
 }
 
-async function renderPositionMap({ mjornFraction, busFraction }) {
+// busFractions: array of 0..1 progress values (one per departure that has a
+// live fix) - deduplicated/nulls-filtered by the caller. Each gets its own
+// marker above the track; when two departures share the same physical bus,
+// their fractions will coincide and the markers overlap (fine - it's the
+// same bus).
+async function renderPositionMap({ mjornFraction, busFractions }) {
   const white = [255, 255, 255];
   const black = [20, 20, 20];
   const gray = [150, 150, 150];
@@ -424,7 +429,8 @@ async function renderPositionMap({ mjornFraction, busFraction }) {
     fillCircle(buf, MAP_WIDTH, MAP_HEIGHT, x, trackY, 6, black);
   }
 
-  if (busFraction !== null && Number.isFinite(busFraction)) {
+  for (const busFraction of busFractions || []) {
+    if (busFraction === null || !Number.isFinite(busFraction)) continue;
     const x = MAP_MARGIN_X + Math.max(0, Math.min(1, busFraction)) * usableWidth;
     fillRect(buf, MAP_WIDTH, MAP_HEIGHT, x - 1, 12, x + 1, trackY - 6, black); // connector tick
     fillCircle(buf, MAP_WIDTH, MAP_HEIGHT, x, 12, 9, black); // bus marker, drawn above the track
@@ -453,11 +459,24 @@ async function main() {
   const mjornNext = nextDeparture(mjornRaw, nowMs, { requireTowardsGrabo: true });
   const graboNext = nextDeparture(graboRaw, nowMs, { requireTowardsGrabo: false });
 
-  const busPosition = await computeBusPosition(token);
+  // Route + live positions: resolved once, then matched per-departure below.
+  // Wrapped here (not inside resolveRoute itself) so a failure still lets us
+  // fall back to a sane mjornFraction for drawing the static map.
+  let route = null;
+  let mjornFraction = 0.5;
+  try {
+    route = await resolveRoute(token);
+    mjornFraction = route.mjornFraction;
+  } catch (err) {
+    console.error("Route/position lookup failed - map will show stops only:", err);
+  }
+
+  const mjornPosition = describeDeparturePosition(route, mjornNext);
+  const graboPosition = describeDeparturePosition(route, graboNext);
 
   const mapPng = await renderPositionMap({
-    mjornFraction: busPosition.mjorn_fraction,
-    busFraction: busPosition.available ? busPosition.progress : null,
+    mjornFraction,
+    busFractions: [mjornPosition?.progress ?? null, graboPosition?.progress ?? null],
   });
   await mkdir(OUTPUT_DIR, { recursive: true });
   await writeFile(MAP_IMAGE_PATH, mapPng);
@@ -476,6 +495,8 @@ async function main() {
       delay_minutes: mjornNext?.delay_minutes ?? 0,
       is_cancelled: mjornNext?.is_cancelled ?? false,
       destination: mjornNext?.destination ?? null,
+      bus_name: mjornPosition?.bus_name ?? null,
+      bus_location: mjornNext ? mjornPosition?.location_text ?? "Position okänd." : null,
     },
     grabo_to_goteborg: {
       label: "Nästa buss från Gråbo busshållplats mot Göteborg kommer om",
@@ -488,9 +509,12 @@ async function main() {
       delay_minutes: graboNext?.delay_minutes ?? 0,
       is_cancelled: graboNext?.is_cancelled ?? false,
       destination: graboNext?.destination ?? null,
+      bus_name: graboPosition?.bus_name ?? null,
+      bus_location: graboNext ? graboPosition?.location_text ?? "Position okänd." : null,
     },
     bus_position: {
-      ...busPosition,
+      available: !!(mjornPosition?.progress != null || graboPosition?.progress != null),
+      mjorn_fraction: mjornFraction,
       map_image_url: `${MAP_IMAGE_PUBLIC_URL}?v=${nowMs}`,
     },
   };

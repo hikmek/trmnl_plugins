@@ -21,6 +21,29 @@ TRMNL private plugin (Polling strategy) tracking a single physical route -
 - Requires a **free** Västtrafik developer account + API credentials
   (unlike the weather/lunch plugins, this one needs an API key).
 
+## Post-mortem: "no departures" after the position-map update
+
+The single-next-bus rename + live position map (this plugin's second
+major version) shipped with a real bug: `fetch.mjs` started importing
+`sharp` (for the position-map PNG) at *fetch time*, but the shared
+workflow (`.github/workflows/build-pages.yml`) never ran `npm install`/
+`npm ci` - none of the other plugins' `fetch.mjs` scripts need any npm
+package at runtime (only the icon-generator scripts, which are run by
+hand, ever imported `sharp` before). So every run threw
+`Cannot find package 'sharp'` immediately - but because every fetch step
+uses `continue-on-error: true` (by design, so one plugin's outage doesn't
+block the others), the step still showed green, no new `data.json` was
+written, and the "Fall back to last published data" step just re-curled
+the previous (pre-update, old-schema) `data.json` every cycle. End result:
+Actions looked 100% healthy while silently serving stale data with the
+old field names - which the new template then rendered as "Ingen avgång
+just nu" for both boards, since it was reading fields
+(`mjorn_to_grabo.has_departure` etc.) that didn't exist in that stale
+JSON. Fixed by adding an `npm ci` step before the fetch steps - see that
+step's comment in the workflow file. If a future plugin update adds
+another npm dependency, remember this same install step now covers it too
+(no per-plugin install needed).
+
 ## How it works
 
 1. `.github/workflows/build-pages.yml` runs `fetch.mjs` every 30 minutes
@@ -30,12 +53,15 @@ TRMNL private plugin (Polling strategy) tracking a single physical route -
    - calls `/stop-areas/{gid}/departures` for both stops and picks the
      single next X3 departure at each (see `nextDeparture()`);
    - resolves Sjövik/Mjörn/Gråbo to coordinates via `/locations/by-text`
-     and calls `/positions` (bounding box + `lineDesignations=X3`) for the
-     live GPS fix of the X3 bus, if one is currently running (see
-     `computeBusPosition()`);
-   - projects that GPS fix onto the Sjövik→Mjörn→Gråbo line to get a 0..1
-     "how far along the route" progress fraction, and renders it as a
-     small PNG (`position-map.png`) - see `renderPositionMap()`.
+     and calls `/positions` once (bounding box + `lineDesignations=X3`) for
+     every X3 vehicle GPS fix currently in that area (see `resolveRoute()`);
+   - matches *each* departure to its own live fix by `detailsReference`
+     (see `describeDeparturePosition()`), producing a `bus_name` + human
+     `bus_location` string per departure - not just one overall position;
+   - projects each matched fix onto the Sjövik→Mjörn→Gråbo line to get a
+     0..1 "how far along the route" progress, and renders every matched
+     departure's position as its own marker on one small PNG
+     (`position-map.png`) - see `renderPositionMap()`.
 3. Writes `public/bus-grabo/data.json` and `public/bus-grabo/position-map.png`.
 4. GitHub Pages publishes both at `https://hikmek.github.io/trmnl_plugins/bus-grabo/`.
 5. Your TRMNL device (Private Plugin, Polling strategy) fetches the JSON
@@ -54,14 +80,24 @@ However, Västtrafik's *own* "Planera Resa" v4 API - the same one already
 used here for departures, with the same `VASTTRAFIK_AUTH_KEY` credentials -
 has an undocumented-on-the-portal-but-present-in-the-API `GET /positions`
 endpoint: pass a lat/long bounding box and (optionally) `lineDesignations`,
-get back real-time `{ latitude, longitude, line, direction, detailsReference }`
+get back real-time `{ latitude, longitude, name, line, direction, detailsReference }`
 for every matching vehicle currently running. That's genuine GPS, not an
 estimate from the timetable - confirmed via the API's own OpenAPI/swagger
-model docs. `computeBusPosition()` calls it with a box drawn tightly around
+model docs. `resolveRoute()` calls it with a box drawn tightly around
 Sjövik/Mjörn/Gråbo (padded ~2km) and `lineDesignations: ["X3"]`, so it
-should only ever pick up the one relevant bus (or none, if no X3 is
-currently running that stretch, e.g. off-hours - the map then just shows
-the three stops with no bus marker and `bus_position.status_text` says so).
+should only ever pick up vehicles relevant to this route (or none, if no
+X3 is currently running that stretch, e.g. off-hours).
+
+Each departure is then matched to its own fix in that result set by
+`detailsReference` (`describeDeparturePosition()`) - the same field name
+Västtrafik uses for "the reference to the service journey" on the
+departures endpoint and "journey reference" on the positions endpoint,
+which is exactly the kind of shared id meant to link the two. **This
+specific assumption hasn't been confirmed against a live response** (no
+Västtrafik credentials were available in the sandbox this was built in) -
+if `bus_location` always comes back "Position okänd" after deploying this,
+that match is the first thing to check (log a raw `/positions` result and
+a raw departure's `detailsReference` side by side).
 
 **Known gap:** the map currently only plots the 3 confirmed endpoints
 (Sjövik / Mjörn / Gråbo) - the user's original ask was for "the 5 stops
@@ -140,7 +176,9 @@ another `<img>` - so it gets its own row, separate from the text rows.
     "estimated_time": "19:27",
     "delay_minutes": 0,
     "is_cancelled": false,
-    "destination": "Göteborg"
+    "destination": "Göteborg",
+    "bus_name": "X3 mot Särö",              // from /positions' "name" field, or null if no live fix matched
+    "bus_location": "Mellan Sjövik och Mjörn (31%)"
   },
   "grabo_to_goteborg": {
     "label": "Nästa buss från Gråbo busshållplats mot Göteborg kommer om",
@@ -152,23 +190,27 @@ another `<img>` - so it gets its own row, separate from the text rows.
     "estimated_time": "19:42",
     "delay_minutes": 0,
     "is_cancelled": false,
-    "destination": "Särö"
+    "destination": "Särö",
+    "bus_name": null,
+    "bus_location": "Position okänd (bussen är inte på väg än)."
   },
   "bus_position": {
-    "available": true,
-    "mjorn_fraction": 0.42,       // where Mjörn sits along the Sjövik(0)->Gråbo(1) line
-    "progress": 0.31,             // where the live bus currently is on that same 0..1 line
-    "status_text": "Bussen är mellan Sjövik och Mjörn (31%)",
+    "available": true,          // true if at least one of the two departures above has a live fix
+    "mjorn_fraction": 0.42,     // where Mjörn sits along the Sjövik(0)->Gråbo(1) line, for drawing the map
     "map_image_url": "https://hikmek.github.io/trmnl_plugins/bus-grabo/position-map.png?v=1757700000000"
   }
 }
 ```
 
-When no X3 bus is currently on the tracked stretch (or the position lookup
-fails), `bus_position.available` is `false`, `progress` is `null`, and
-`status_text` explains why (`reason`: `"no_active_bus"`, `"off_segment"`,
-or `"error"`) - the map image still renders (just the three stops, no bus
-marker).
+`bus_location` (per departure) is always a human-readable string, never
+null while `has_departure` is true - it explains what happened even when
+there's no usable fix: `"Position okänd (bussen är inte på väg än)."` (no
+live fix matched that `detailsReference` yet), `"Utanför Sjövik-Gråbo just
+nu."` (matched, but implausibly far from the route - GPS noise or a
+mismatch), or `"Position kunde inte beräknas."` (the route/positions
+lookup itself failed - see `resolveRoute()`'s try/catch in `main()`). The
+map image always renders regardless - worst case, just the three stops
+with no bus markers.
 
 ## Local test
 
@@ -197,9 +239,14 @@ above - the script logs the full `data.json` contents to the console.
 - **`/positions` and `/locations/by-text` are undocumented on Västtrafik's
   public developer portal pages** (found via the v4 API's own OpenAPI
   schema instead) - if Västtrafik ever changes their shape without notice,
-  `computeBusPosition()` is wrapped in a try/catch that falls back to
-  `bus_position.available: false` rather than failing the whole fetch, so
+  `resolveRoute()` is called inside a try/catch in `main()` that falls back
+  to a plain stops-only map (no bus markers, `bus_location: "Position
+  kunde inte beräknas."`) rather than failing the whole fetch, so
   departures keep working even if the position feature breaks.
+- **Any npm dependency `fetch.mjs` imports must actually get installed in
+  CI** - see the "Post-mortem" section above. The workflow's `npm ci` step
+  covers this repo-wide now, but it's worth remembering if this plugin (or
+  a new one) ever adds another package.
 - The Västtrafik access token is valid 24h, but since this runs fresh in
   GitHub Actions each time, a new token is requested on every run - no
   caching/refresh logic needed.

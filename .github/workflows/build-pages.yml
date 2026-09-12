@@ -36,6 +36,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
+
+      # Installs package.json's dependencies (currently just "sharp", used
+      # by bus-grabo/fetch.mjs to render the live position-map PNG every
+      # run - NOT only by the icon-generator scripts, which is what this
+      # used to be needed for before bus-grabo started importing sharp at
+      # fetch time too). Without this step node_modules doesn't exist in
+      # the fresh checkout, "import sharp from 'sharp'" throws
+      # MODULE_NOT_FOUND, and - because the fetch steps below use
+      # continue-on-error - that failure is silently swallowed: the step
+      # shows green, no new data.json is written, and the "Fall back to
+      # last published data" step just re-publishes the previous (stale)
+      # data.json every cycle with no visible error anywhere. If a plugin
+      # ever looks "stuck" on old data despite green Actions runs, this is
+      # the first thing to check.
+      - name: Install dependencies
+        run: npm ci
 
       # Each fetch step uses continue-on-error so one plugin's transient
       # failure (e.g. a source site timing out) doesn't block the others

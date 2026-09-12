@@ -11,12 +11,19 @@
   version's convention.
 
   Position map: a single generated PNG (bus_position.map_image_url) showing
-  Sjövik -- Mjörn -- Gråbo as three dots on a line, with a bus marker at
-  the live GPS-derived position along that stretch (see fetch.mjs's
-  renderPositionMap()/computeBusPosition()). Rules learned the hard way in
-  weather-yr apply here too: this <img> uses class="image image--contain
-  image-dither" (not just "image"), and it is a single LONE <img> - never
-  placed as a flex sibling of another <img> - so it gets its own row.
+  Sjövik -- Mjörn -- Gråbo as three dots on a line, with a marker for each
+  departure's live GPS-derived position along that stretch (see fetch.mjs's
+  renderPositionMap()/resolveRoute()/describeDeparturePosition()). Rules
+  learned the hard way in weather-yr apply here too: this <img> uses
+  class="image image--contain image-dither" (not just "image"), and it is
+  a single LONE <img> - never placed as a flex sibling of another <img> -
+  so it gets its own row.
+
+  Bus name + live location for each departure are shown at the bottom
+  (mjorn_to_grabo.bus_name/bus_location, grabo_to_goteborg.bus_name/
+  bus_location) - these come from matching the departure to a live GPS fix
+  by detailsReference; see fetch.mjs's describeDeparturePosition() for what
+  each possible bus_location string means (unknown/off-route/etc).
 {%- endcomment -%}
 
 <div class="layout layout--col gap--medium">
@@ -29,10 +36,6 @@
     <div class="label">Sjövik</div>
     <div class="label">Mjörn</div>
     <div class="label">Gråbo</div>
-  </div>
-
-  <div class="layout layout--row layout--center-x">
-    <div class="label">{{ bus_position.status_text }}</div>
   </div>
 
   <div class="divider"></div>
@@ -51,6 +54,16 @@
   <div class="label">{{ grabo_to_goteborg.minutes_until }} min ({{ grabo_to_goteborg.estimated_time }}){% if grabo_to_goteborg.delay_minutes > 0 %} (+{{ grabo_to_goteborg.delay_minutes }}){% endif %}{% if grabo_to_goteborg.is_cancelled %} - INSTÄLLD{% endif %}</div>
   {% else %}
   <div class="label">Ingen avgång just nu</div>
+  {% endif %}
+
+  <div class="divider"></div>
+
+  <div class="label">BUSSINFO</div>
+  {% if mjorn_to_grabo.has_departure %}
+  <div class="label">Mjörn: {{ mjorn_to_grabo.bus_name | default: mjorn_to_grabo.line }} - {{ mjorn_to_grabo.bus_location }}</div>
+  {% endif %}
+  {% if grabo_to_goteborg.has_departure %}
+  <div class="label">Gråbo: {{ grabo_to_goteborg.bus_name | default: grabo_to_goteborg.line }} - {{ grabo_to_goteborg.bus_location }}</div>
   {% endif %}
 
 </div>
