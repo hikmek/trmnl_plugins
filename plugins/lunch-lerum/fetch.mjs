@@ -211,13 +211,21 @@ async function main() {
   const todayKey = todayKeyStockholm();
   const todayIndex = days.findIndex((d) => d.date === todayKey);
 
+  const fallbackWeekday = WEEKDAYS[(new Date(todayKey).getUTCDay() + 6) % 7];
+  const isWeekend = fallbackWeekday === "Lördag" || fallbackWeekday === "Söndag";
+
   const today =
     todayIndex >= 0
       ? days[todayIndex]
       : {
           date: todayKey,
-          weekday: WEEKDAYS[(new Date(todayKey).getUTCDay() + 6) % 7],
-          note: "No menu published for this date",
+          weekday: fallbackWeekday,
+          // Weekends never have a published menu (school's out) - that's
+          // expected, not a scraping gap, so it gets its own Swedish note
+          // instead of the generic "no menu found" message below (which is
+          // for real gaps: a weekday that's out of term range, or a date
+          // the page just doesn't have yet).
+          note: isWeekend ? "HELG !! = ingen skolmat" : "No menu published for this date",
           lunch: null,
           lunch_icon_url: null,
           vegetarian: null,
