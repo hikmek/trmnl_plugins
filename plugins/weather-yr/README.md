@@ -139,14 +139,16 @@ temperature.
 
 `template.liquid` (Full view) lays these out as weather icon (left, 96px) -
 temperature (center, `value--xxlarge`) - clothing + rain-gear icons
-(right, 96px). `template.quadrant.liquid` uses the same left/center/right
-idea at a smaller size (36px icons, `value--base`), but only shows the
-outfit icon (no separate rain-gear icon - there's only room for one icon
-on the right in that small a pane).
+(right, 96px) - there's plenty of horizontal room on the full screen, so
+icons and text safely share a row here.
+
+`template.quadrant.liquid` does **not** use that same row layout - see the
+"Quadrant icon+text overflow" note below for why, and what it does instead
+(icons stacked in their own row, temperature alone on its own row).
 
 ## Rain forecast text
 
-Below the icon/temperature row, `current.rain_forecast_text` gives a
+Below the icon/temperature area, `current.rain_forecast_text` gives a
 plain-language heads-up: `findRainStart()` in `fetch.mjs` scans yr.no's
 near-term hourly timeseries entries (the same `expectsRain()` check used
 for the rain-gear icon) for the first one, within the next 60 minutes,
@@ -156,26 +158,40 @@ sikte!"`. `current.rain_starts_at` has the raw ISO timestamp (or `null`)
 if you want to use it separately. Shown centered in both Full and
 Quadrant views.
 
-**Note on the clothing icon PNGs**: they must be saved as 1-bit
-**palette/indexed** PNGs (`colorType 3`), matching the existing weather
-icons exactly - a 1-bit **grayscale** PNG (`colorType 0`, which is what a
-naive `Pillow` `mode "1"` save produces) is a different, valid PNG variant
-that TRMNL's rendering pipeline apparently can't decode: it silently drops
-the image AND corrupts the neighboring text in the same row, rather than
-just showing a broken-image icon. If you regenerate the clothing icons
-outside of `generate-clothing-icons.mjs` (which uses `sharp` and produces
-the correct palette format automatically), re-encode with something like
-`Image.open(path).convert("L").convert("P", palette=Image.ADAPTIVE,
-colors=2)` before saving, and check with `file icons/*.png` that it says
-"1-bit colormap", not "1-bit grayscale".
+**Quadrant icon+text overflow (the real cause of the garbled-temperature /
+missing-icon bug)**: a Quadrant mashup pane is only ~1/4 of the screen, and
+TRMNL centers a row's content - so a row wider than the pane gets clipped
+equally on both edges instead of wrapping. Putting an `<img>` on the same
+row as the temperature (`icon - value--base - icon`) made that row too
+wide, which silently deleted the icons at both ends *and* chopped up the
+temperature digits in the middle - it looked like a corrupt PNG or a
+font-size bug, but it was plain horizontal clipping (proved by the
+condition/H-L/rain-forecast text rows underneath, which are plain stacked
+text with no icon sharing the row, and always rendered perfectly). An
+earlier commit (`35fb824`) had already hit and fixed this exact issue once
+by switching the icon to sit *above* the temperature instead of beside it;
+a later redesign reintroduced the row layout and broke it again. The rule
+going forward: in `template.quadrant.liquid`, never put an `<img>` on the
+same row as the temperature value - icons may only share a row with other
+icons (which are narrow enough to fit), never with `value`/text content.
 
-**Important**: the temperature keeps a real TRMNL `value--*` class rather
-than a custom inline `font-size`. TRMNL renders "value" numbers through
-its own pixel/bitmap font system tied to those specific classes - an
-arbitrary font-size outside that set was tried first to force an exact
-icon/text height match, but it corrupted the digits *and* broke the
-neighboring icons' rendering (a whole-row artifact, not just a text one).
-The icon sizes above are just chosen to visually balance against
+Two things that were tried and did *not* actually fix this bug, kept here
+so they aren't re-tried: (1) removing the custom inline `font-size` in
+favor of a real `value--*` class - still the right thing to do (TRMNL
+renders "value" numbers through its own pixel/bitmap font system tied to
+those specific classes), but not what caused this particular symptom;
+(2) re-encoding the clothing icon PNGs from 1-bit grayscale (`colorType 0`)
+to 1-bit palette/indexed (`colorType 3`) to match the existing weather
+icons - also still worth keeping for consistency (a naive `Pillow` `mode
+"1"` save produces the grayscale variant; `generate-clothing-icons.mjs`'s
+`sharp` output is already palette format; re-encode with
+`Image.open(path).convert("L").convert("P", palette=Image.ADAPTIVE,
+colors=2)` if you ever regenerate them another way, and check with `file
+icons/*.png` for "1-bit colormap" vs "1-bit grayscale") - but this was not
+the cause of the Quadrant bug either, since it persisted unchanged after
+that fix was deployed.
+
+The icon sizes in both templates are chosen to visually balance against
 `value--xxlarge` / `value--base` (per the repo's own size notes:
 `value--large` ≈ 58px, `value--xlarge` ≈ 74px) rather than an exact
 pixel-for-pixel match with the text.

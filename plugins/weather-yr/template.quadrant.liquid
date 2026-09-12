@@ -6,20 +6,27 @@
   Font-family is set inline to force smooth Inter instead of the default
   pixel font, scoped to just this plugin (see template.liquid for why).
 
-  Sizing note: a Quadrant pane is only ~1/4 of the screen, so it needs much
-  smaller Value sizes than the Full view (value--xlarge is 74px and will
-  overflow/clip badly here).
+  IMPORTANT LESSON (learned the hard way, twice): a Quadrant pane is only
+  ~1/4 of the screen and is NOT wide enough for an icon + the temperature
+  text sharing the same row. TRMNL centers a row's content, so when the
+  row is wider than the pane, both edges get clipped off equally - which
+  silently deletes the icons at the ends AND chops up the temperature text
+  in the middle (this looked like a corrupt-PNG or font-size bug, but it
+  is plain horizontal overflow/clipping - confirmed because the
+  condition/H-L/rain-forecast text rows below, which are plain stacked
+  text with no icon sharing the row, always rendered perfectly fine).
+  An earlier commit (35fb824) already hit and fixed this exact issue once
+  by switching to a column layout with the icon stacked ABOVE the
+  temperature rather than beside it - keep that pattern. The rule for this
+  file going forward: never put an <img> on the same row as the
+  temperature value; icons only ever share a row with OTHER icons (narrow),
+  never with value/text content.
 
-  Icon row: weather icon (left) - temperature (center) - clothing proposal
-  icon (right). The temperature keeps a real TRMNL value--* class
-  (value--base) rather than a custom inline font-size - an arbitrary
-  font-size outside TRMNL's own pixel/bitmap-font size set corrupted the
-  digits AND broke the neighboring icons in testing (see template.liquid's
-  Full view comment for the same issue at a bigger size). Icons are sized
-  to something that visually balances against value--base rather than an
-  exact pixel match. The extra rain-gear icon (shown in Full view when
-  current.needs_rain_gear is true) is skipped here - there's only room for
-  one icon on the right in this small a pane.
+  Layout: weather icon, then (if there's a clothing/rain icon to show) a
+  small icon-only row, then the temperature alone, then text labels below.
+  The temperature keeps a real TRMNL value--* class (value--base) rather
+  than a custom inline font-size - an arbitrary font-size outside TRMNL's
+  own pixel/bitmap-font size set corrupted the digits in earlier testing.
 
   Rain forecast text: current.rain_forecast_text ("Inget regn i sikte!" or
   "Det börjar regna kl HH:MM idag!" - see fetch.mjs's findRainStart()),
@@ -28,10 +35,13 @@
 
 <div class="layout layout--col layout--center gap--xsmall" style="font-family: 'Inter', sans-serif;">
   <div class="layout layout--row layout--center-y gap--xsmall">
-    <img class="image" src="{{ current.icon_url }}" width="36" height="36" style="width: 36px; height: 36px;">
-    <div class="value value--base">{{ current.temperature }}°</div>
-    <img class="image" src="{{ current.clothing_icon_url }}" width="36" height="36" style="width: 36px; height: 36px;">
+    <img class="image" src="{{ current.icon_url }}" width="28" height="28" style="width: 28px; height: 28px;">
+    <img class="image" src="{{ current.clothing_icon_url }}" width="28" height="28" style="width: 28px; height: 28px;">
+    {% if current.needs_rain_gear %}
+    <img class="image" src="{{ current.rain_gear_icon_url }}" width="28" height="28" style="width: 28px; height: 28px;">
+    {% endif %}
   </div>
+  <div class="value value--base">{{ current.temperature }}°</div>
   <div class="label">{{ current.condition_text }}</div>
   <div class="description">H {{ today.high }}° / L {{ today.low }}°</div>
   <div class="description">{{ current.rain_forecast_text }}</div>
