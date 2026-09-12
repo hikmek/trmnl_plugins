@@ -13,21 +13,43 @@
   .screen element, which private plugins don't control). Instead we set
   font-family directly here, scoped to just this plugin, which overrides
   the pixel font without touching device-wide settings or other plugins.
+
+  Hero row: weather icon (left, big) - temperature (center) - clothing
+  proposal icon(s) (right). All three use the same explicit 96px height
+  (set as an inline style on each rather than relying on a framework
+  value--* class) so the icons are guaranteed to match the temperature
+  text's height exactly, however TRMNL's own size classes happen to be
+  defined. To resize, change all three "96px"/"96" occurrences together.
+  current.temperature is itself the average of yr.no + SMHI + Open-Meteo
+  (see fetch.mjs) - current.temperature_sources has the individual
+  readings if you want to show/debug them.
+
+  Clothing proposal: current.clothing_icon_url is picked from the
+  (averaged) current temperature (see fetch.mjs's CLOTHING_BANDS); when
+  current.needs_rain_gear is true, an umbrella icon is shown alongside it.
 {%- endcomment -%}
 
 <div class="layout layout--col gap--large" style="font-family: 'Inter', sans-serif;">
 
-  <div class="layout layout--row gap--large">
-    <div class="item">
-      <div class="layout layout--row layout--center-y gap--small">
-        <div class="value value--xxlarge">{{ current.temperature }}°</div>
-        <img class="image" src="{{ current.icon_url }}" width="80" height="80" style="width: 80px; height: 80px;">
-      </div>
-      <div class="label">{{ current.condition_text }}</div>
+  <div class="layout layout--row layout--center-y gap--large" style="justify-content: center;">
+    <img class="image" src="{{ current.icon_url }}" width="96" height="96" style="width: 96px; height: 96px;">
+    <div class="value" style="font-size: 96px; line-height: 1;">{{ current.temperature }}°</div>
+    <div class="layout layout--row layout--center-y gap--small">
+      <img class="image" src="{{ current.clothing_icon_url }}" width="96" height="96" style="width: 96px; height: 96px;">
+      {% if current.needs_rain_gear %}
+      <img class="image" src="{{ current.rain_gear_icon_url }}" width="96" height="96" style="width: 96px; height: 96px;">
+      {% endif %}
     </div>
+  </div>
 
-    <div class="divider divider--vertical"></div>
+  <div class="layout layout--row gap--large" style="justify-content: center;">
+    <div class="label">{{ current.condition_text }}</div>
+    <div class="label">{{ current.clothing_text }}</div>
+  </div>
 
+  <div class="divider"></div>
+
+  <div class="layout layout--row gap--large">
     <div class="item">
       <div class="value value--xlarge">{{ today.high }}° / {{ today.low }}°</div>
       <div class="label">Idag Hög / Låg</div>
