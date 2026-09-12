@@ -67,8 +67,10 @@ temperature" below.
     "clothing_text": "T-shirt & tunn jacka",
     "needs_rain_gear": false,          // true if rain/sleet/thunder is indicated now or in the next hour
     "rain_gear_icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/clothing-umbrella.png",
-    "rain_starts_at": null,            // ISO timestamp of the first upcoming rain within 60 min, or null
-    "rain_forecast_text": "Inget regn i sikte!" // or "Det börjar regna kl 19:30 idag!"
+    "rain_starts_at": null,            // set only when NOT currently raining: ISO time of the first upcoming rain within 60 min, else null
+    "rain_period_started_at": null,    // set only while CURRENTLY raining: ISO time this rain period began (carried across runs), else null
+    "rain_period_ends_at": null,       // set only while CURRENTLY raining: ISO time it's expected to stop (within 12h), else null
+    "rain_forecast_text": "Inget regn i sikte närmaste 60 min!" // or "Det börjar regna kl 19:30 idag!" or "Lätt regn kl 18:04–20:00" or "Lätt regn sedan kl 18:04"
   },
   "today": { "high": 16.5, "low": 9.8 },
   "forecast": [
@@ -149,14 +151,47 @@ icons and text safely share a row here.
 ## Rain forecast text
 
 Below the icon/temperature area, `current.rain_forecast_text` gives a
-plain-language heads-up: `findRainStart()` in `fetch.mjs` scans yr.no's
-near-term hourly timeseries entries (the same `expectsRain()` check used
-for the rain-gear icon) for the first one, within the next 60 minutes,
-that indicates rain. If one is found, the text is `"Det börjar regna kl
-HH:MM idag!"` using that entry's local time; otherwise it's `"Inget regn i
-sikte!"`. `current.rain_starts_at` has the raw ISO timestamp (or `null`)
-if you want to use it separately. Shown centered in both Full and
-Quadrant views.
+plain-language heads-up, shown centered in both Full and Quadrant views.
+It's one of three mutually-exclusive messages, chosen in `fetch.mjs`
+specifically so it can never contradict `current.condition_text` (see the
+"no rain in sight while it's raining" note below for why that mattered):
+
+1. **Raining right now** (`current.needs_rain_gear` is `true`) - reports
+   the *current* rain period's start and, if known, end time:
+   `"Lätt regn kl 18:04–20:00"`, or `"Lätt regn sedan kl 18:04"` if
+   `findRainEnd()` can't find a dry entry within the next 12 hours yet.
+   `current.rain_period_started_at` / `current.rain_period_ends_at` hold
+   the raw ISO timestamps (`rain_period_ends_at` is `null` in the
+   "sedan kl" case).
+2. **Not raining now, but starting soon** - `findRainStart()` scans
+   yr.no's near-term timeseries for the first entry, within the next 60
+   minutes, where `expectsRain()` is true. If found: `"Det börjar regna kl
+   HH:MM idag!"`. `current.rain_starts_at` has the raw ISO timestamp.
+3. **Not raining, none expected within 60 min** - `"Inget regn i sikte
+   närmaste 60 min!"` (explicitly scoped to the 60-minute window it
+   actually checked, rather than an unqualified "no rain in sight" claim).
+
+**Where the start time for case 1 comes from**: yr.no's forecast timeseries
+only ever contains "now-or-later" entries, so a single fetch can never know
+when an *already-happening* shower actually started. `fetchPreviousRainState()`
+works around this by reading back the previously-published `data.json`: if
+it was already raining last run and had a `rain_period_started_at`, that
+timestamp carries forward unchanged across runs; otherwise "now" is
+recorded as the (approximate, accurate to within one fetch interval - see
+`MIN_INTERVAL_MINUTES`) start of a newly-detected rain period. This is
+best-effort - if that fetch fails, the period is just treated as having
+started now.
+
+**The "Lätt regn" / "Inget regn i sikte!" contradiction bug**: the
+original `findRainStart()`-only logic always ran, even while it was
+already raining - and since it only looks at entries strictly *after* the
+current moment, a shower already in progress but expected to taper off
+before the next hourly entry would make `findRainStart()` return `null`,
+producing "Inget regn i sikte!" (or before this fix, the unqualified
+"Inget regn i sikte!") right alongside `condition_text: "Lätt regn"`. The
+fix is case 1 above: whenever it's *currently* raining, the message is
+built from the current period's start/end instead of ever calling
+`findRainStart()`.
 
 **Quadrant icon+text overflow (the real cause of the garbled-temperature /
 missing-icon bug)**: a Quadrant mashup pane is only ~1/4 of the screen, and

@@ -209,8 +209,11 @@ function pickPrecip(entry) {
 }
 
 // --- "when does the rain start" forecast text ------------------------------
+// Only meaningful when it is NOT currently raining (see main() - when it IS
+// currently raining, current.rain_forecast_text instead reports the current
+// rain period's start/end, so the two messages never contradict each other).
 // Scans yr.no's near-term (hourly) timeseries entries for the first one
-// (within the next `windowMinutes`, including right now) where rain is
+// (within the next `windowMinutes`, strictly after right now) where rain is
 // expected, per the same expectsRain() check used for the rain-gear icon.
 // Entries are chronological, so the loop can stop as soon as it passes the
 // window rather than scanning the whole multi-day series.
@@ -225,6 +228,23 @@ function findRainStart(timeseries, nowMs, windowMinutes = 60) {
   return null;
 }
 
+// --- "when does the current rain stop" ------------------------------------
+// Only called when it IS currently raining. Scans forward for the first
+// future entry where expectsRain() is false, within `windowMinutes` (default
+// 12h - light rain/showers can persist a while). Returns null if rain is
+// still expected to continue past that window (caller falls back to an
+// open-ended "sedan kl HH:MM" message with no end time).
+function findRainEnd(timeseries, nowMs, windowMinutes = 720) {
+  const windowMs = windowMinutes * 60 * 1000;
+  for (const entry of timeseries) {
+    const entryMs = new Date(entry.time).getTime();
+    if (entryMs < nowMs) continue;
+    if (entryMs - nowMs > windowMs) break;
+    if (!expectsRain(pickSymbol(entry), pickPrecip(entry))) return entry.time;
+  }
+  return null;
+}
+
 function formatLocalTime(isoTime, timeZone) {
   return new Intl.DateTimeFormat("sv-SE", {
     timeZone,
@@ -232,6 +252,29 @@ function formatLocalTime(isoTime, timeZone) {
     minute: "2-digit",
     hour12: false,
   }).format(new Date(isoTime));
+}
+
+// --- cross-run rain-period tracking -----------------------------------------
+// yr.no's forecast timeseries only ever has "now or later" entries, so a
+// single fetch can never tell us when an ALREADY-happening rain shower
+// actually started. To show a real start time, each run reads back the
+// previously-published data.json: if it was already raining last time (and
+// recorded a start), that start time carries forward unchanged; otherwise
+// "now" is recorded as the (approximate - accurate to within one fetch
+// interval) start of a newly-detected rain period. Best-effort: any failure
+// just means we treat this as a freshly-started rain period.
+async function fetchPreviousRainState(liveDataUrl) {
+  try {
+    const res = await fetch(liveDataUrl, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return {
+      wasRaining: Boolean(json?.current?.needs_rain_gear),
+      periodStartedAt: json?.current?.rain_period_started_at ?? null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 const LIVE_DATA_URL = "https://hikmek.github.io/trmnl_plugins/weather-yr/data.json";
@@ -280,16 +323,41 @@ async function main() {
   const clothing = clothingForTemperature(averagedTemperature);
   const needsRainGear = expectsRain(nowSymbol, nowPrecip);
 
-  const rainStartsAt = findRainStart(timeseries, Date.now(), 60);
-  const rainForecastText = rainStartsAt
-    ? `Det börjar regna kl ${formatLocalTime(rainStartsAt, TIMEZONE)} idag!`
-    : "Inget regn i sikte!";
+  // Three distinct cases, chosen so the message can never contradict
+  // current.condition_text the way "Lätt regn" + "Inget regn i sikte!" did:
+  //  1. Raining right now -> report THIS period's start/end, never "no rain".
+  //  2. Not raining, but starts within 60 min -> "Det börjar regna kl HH:MM".
+  //  3. Not raining, none expected within 60 min -> explicitly scoped
+  //     "Inget regn i sikte närmaste 60 min!" (not an unqualified claim).
+  const nowMs = Date.now();
+  const conditionText = readable(nowSymbol);
+  let rainStartsAt = null; // upcoming rain start (case 2 only)
+  let rainPeriodStartedAt = null; // current rain period's start (case 1 only)
+  let rainPeriodEndsAt = null; // current rain period's expected end (case 1 only)
+  let rainForecastText;
+
+  if (needsRainGear) {
+    const previousRainState = await fetchPreviousRainState(LIVE_DATA_URL);
+    rainPeriodStartedAt =
+      previousRainState?.wasRaining && previousRainState.periodStartedAt
+        ? previousRainState.periodStartedAt
+        : new Date(nowMs).toISOString();
+    rainPeriodEndsAt = findRainEnd(timeseries, nowMs, 720);
+    rainForecastText = rainPeriodEndsAt
+      ? `${conditionText} kl ${formatLocalTime(rainPeriodStartedAt, TIMEZONE)}–${formatLocalTime(rainPeriodEndsAt, TIMEZONE)}`
+      : `${conditionText} sedan kl ${formatLocalTime(rainPeriodStartedAt, TIMEZONE)}`;
+  } else {
+    rainStartsAt = findRainStart(timeseries, nowMs, 60);
+    rainForecastText = rainStartsAt
+      ? `Det börjar regna kl ${formatLocalTime(rainStartsAt, TIMEZONE)} idag!`
+      : "Inget regn i sikte närmaste 60 min!";
+  }
 
   const current = {
     temperature: averagedTemperature,
     temperature_sources: Object.fromEntries(temperatureReadings.map((r) => [r.source, round1(r.value)])),
     condition_code: nowSymbol,
-    condition_text: readable(nowSymbol),
+    condition_text: conditionText,
     icon: iconForCode(nowSymbol),
     icon_url: iconUrl(nowSymbol),
     wind_speed: round1(nowDetails.wind_speed),
@@ -301,6 +369,8 @@ async function main() {
     needs_rain_gear: needsRainGear,
     rain_gear_icon_url: `${ICON_BASE_URL}/clothing-umbrella.png`,
     rain_starts_at: rainStartsAt,
+    rain_period_started_at: rainPeriodStartedAt,
+    rain_period_ends_at: rainPeriodEndsAt,
     rain_forecast_text: rainForecastText,
   };
 
@@ -358,7 +428,6 @@ async function main() {
   });
 
   const today = forecast.find((d) => d.date === todayKey) || forecast[0];
-  const nowMs = Date.now();
 
   const output = {
     plugin: "weather-yr",
