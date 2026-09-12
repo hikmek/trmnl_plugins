@@ -1,15 +1,22 @@
 # Plugin #2 - "Matn" (School Lunch + Hemmamat + Dagens kock)
 
-TRMNL private plugin (Polling strategy), displayed on-device as **Matn**.
-Three independent sections share this one plugin/data feed:
+TRMNL private plugin (Polling strategy), displayed on-device as **Matn**
+(bottom-left corner of both views). Three independent sections share this
+one plugin/data feed, laid out as three columns side by side in the Full
+view (Quadrant only has room for skolmatn + dagens kock - see below):
 
-1. **Skolmatn** - today's school lunch (grundskola/gymnasium) for Lerums
-   kommun, plus the next few school days.
-2. **Hemmamatn** - on weekends (when there's no school lunch), the family's
-   own home-cooked menu instead.
-3. **Dagens kock** - unrelated in content to the other two: today's random
-   pick from the broforce plugin's portrait roster, shown Quadrant-only,
-   picture + name, right next to the lunch info.
+1. **Skolmatn** (left column) - the school's **vegetarian** option only
+   (`today.vegetarian`) for Lerums kommun. On Lördag/Söndag there's never a
+   school menu at all, so this column shows **"HELGn = Ingen skolmatn"**
+   instead.
+2. **Hemmamatn** (center column) - the family's own home-cooked weekend
+   menu, sourced from a shared Google Sheet. Shows **both** Lördag and
+   Söndag (Lunch + Middag each) for the current ISO week - every day, not
+   just on the weekend itself, since a weekday's current ISO week already
+   covers its upcoming weekend.
+3. **Dagens kock** (right column) - unrelated in content to the other two:
+   today's random pick from the broforce plugin's portrait roster, picture
+   + name, shown in both Full and Quadrant views.
 
 - Skolmat data source: [lerum.se lunch menu page](https://lerum.se/utbildning-och-barnomsorg/gemensamt-for-forskolor-och-skolor-i-lerums-kommun/maltider/matsedel-grundskola-och-gymnasium-hostterminen-2026) (Höstterminen 2026).
   No API - the page is scraped directly (plain server-rendered HTML, no JS
@@ -18,7 +25,8 @@ Three independent sections share this one plugin/data feed:
   (one row per ISO week number, Lördag/Söndag × Lunch/Middag columns).
   **Must be shared as "Anyone with the link" → Viewer** - `fetch.mjs` reads
   it via the public `gviz/tq` CSV export endpoint, no API key/login
-  involved, same no-credentials approach as every other plugin here.
+  involved, same no-credentials approach as every other plugin here. Fetched
+  **every day** (not just on weekends), keyed by the current ISO week.
 - Dagens kock data source: `../broforce/portraits/manifest.json` - read
   straight off disk (both plugins live in this same repo checkout), no
   network call. See [plugin #5's README](../broforce/README.md) for what's
@@ -38,22 +46,26 @@ Three independent sections share this one plugin/data feed:
 2. `fetch.mjs` downloads the lerum.se page, parses each day's heading
    (`<h3 class="subheading3">Weekday D Month [note]</h3>`) and its list of
    `<li>Dagens Lunch ...</li>` / `<li>Dagens Gröna ...</li>` items.
-3. It figures out "today" using the **Europe/Stockholm** calendar date. If
-   today is Lördag or Söndag (school never publishes weekend menus), it
-   also fetches the hemmamat sheet, computes today's **ISO 8601 week
-   number** (Sweden's usual week numbering - matches the sheet's "vecka"
-   column), and looks up that week's row.
+3. It figures out "today" using the **Europe/Stockholm** calendar date and
+   sets `today.is_weekend` accordingly. Every day (not just weekends), it
+   also computes the current **ISO 8601 week number** (Sweden's usual week
+   numbering - matches the sheet's "vecka" column) and fetches the
+   hemmamat sheet's row for that week, so `today.hemmamat` always has
+   whatever's currently in the sheet for Lördag and Söndag.
 4. It also picks one random entry from the broforce roster for "Dagens
    kock" - same mechanism as broforce/fetch.mjs's own Bro-of-the-day pick,
    just done independently here (not necessarily the same Bro broforce
    itself shows that day).
-5. It writes `public/lunch-lerum/data.json` with today's menu (+ hemmamat
-   on weekends, + dagens_kock every day) and a short skolmat look-ahead.
+5. It writes `public/lunch-lerum/data.json` with today's menu, the current
+   week's hemmamat (every day), and dagens_kock (every day), plus a short
+   skolmat look-ahead.
 6. GitHub Pages publishes it at:
    `https://hikmek.github.io/trmnl_plugins/lunch-lerum/data.json`
 7. Your TRMNL device (Private Plugin, Polling strategy) fetches that JSON
-   and renders it with `template.liquid` (Full) / `template.quadrant.liquid`
-   (Quadrant - also shows Dagens kock on the right).
+   and renders it with `template.liquid` (Full - 3 columns: Skolmatn /
+   Hemmamatn / Dagens kockn) / `template.quadrant.liquid` (Quadrant -
+   today's skolmat or vegetarian dish, or hemmamat on weekends, plus
+   Dagens kock on the right).
 
 All of the above only actually runs once the Europe/Stockholm calendar
 date changes (step 1's throttle) - so **all three sections (skolmat,
@@ -83,12 +95,17 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
   "today": {
     "date": "2026-09-08",
     "weekday": "Tisdag",
+    "is_weekend": false,   // true only on Lördag/Söndag
     "note": null,          // e.g. "Höstlov", "Studiedag", "Terminsstart" - null on normal days
     "lunch": "Panerad fisk med remouladsås och kokt potatis",
     "lunch_icon_url": null, // set only if the dish text matches a known keyword (see below)
     "vegetarian": null,    // null if only one option was published that day
     "vegetarian_icon_url": null,
-    "hemmamat": null,      // set only on Lördag/Söndag when the sheet has a row for this week - see below
+    "hemmamat": {          // current ISO week's row from the sheet - fetched every day, not just weekends
+      "vecka": 37,                // ISO week number, matches the sheet's "vecka" column
+      "lordag": { "lunch": "soppa på spik", "middag": "spädgris" },
+      "sondag": { "lunch": "pannkakor", "middag": "kalops" }
+    },
     "dagens_kock": {       // today's random pick from the broforce roster - every day, not just weekends
       "slug": "brominator",
       "name": "Brominator",
@@ -98,28 +115,21 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
   },
   "upcoming": [
     // next 4 school days found on the page after today, same shape as `today`
-    // (always weekdays - hemmamat is always null here, the lookahead doesn't span weekends)
+    // (always weekdays - hemmamat/dagens_kock are not computed for these, only for `today`)
   ]
 }
 ```
 
 If a weekday isn't found on the page at all (outside the term, or a gap in
 what's published), `today.note` becomes `"No menu published for this
-date"` and `lunch`/`vegetarian` are `null`. On an actual weekend, `today.note`
-is instead `"HELG !! = ingen skolmat"` and `today.hemmamat` is filled in
-(when the sheet has that week's row):
+date"` and `lunch`/`vegetarian` are `null`. On an actual weekend,
+`today.is_weekend` is `true` and `today.note` is instead
+`"HELGn = Ingen skolmatn"` - `today.hemmamat` is filled in the same way as
+on weekdays (it doesn't depend on `is_weekend`).
 
-```jsonc
-"hemmamat": {
-  "vecka": 37,             // ISO week number, matches the sheet's "vecka" column
-  "lunch": "soppa på spik",  // that day's (Lördag or Söndag, whichever today is) Lunch column
-  "middag": "spädgris"       // ...and Middag column
-}
-```
-
-`hemmamat` stays `null` on weekends too if the sheet has no row yet for the
-current ISO week, or if the sheet request fails - it never blocks skolmat
-data from publishing.
+`hemmamat` is `null` (instead of the object shown above) if the sheet has
+no row yet for the current ISO week, or if the sheet request fails - it
+never blocks skolmat data from publishing.
 
 ## Pixel-art food icons
 
@@ -181,14 +191,13 @@ node plugins/lunch-lerum/fetch.mjs
   fallback message.
 - **Hemmamat needs its sheet's row filled in ahead of time**: whoever
   maintains the sheet adds a new "vecka" row before that weekend arrives.
-  If a weekend's row is missing, `hemmamat` is just `null` and the Full
-  view shows "- (helgmeny, visas lördag-söndag)" - no error, just no data
-  yet.
+  If the current week's row is missing, `hemmamat` is just `null` and both
+  views show "Ingen hemmamat inlagd än" - no error, just no data yet.
 - If the sheet's sharing is ever changed back to "Restricted", the
   `gviz/tq` request starts failing (logged, non-fatal) and hemmamat quietly
   goes back to always-null until sharing is fixed.
 - **Dagens kock depends on `plugins/broforce/portraits/manifest.json`
   existing in the repo.** If broforce is ever removed or that manifest is
   moved, `pickDagensKock()` fails safely (logged, non-fatal) and
-  `dagens_kock` is just `null` - the Quadrant view's right column simply
-  doesn't render.
+  `dagens_kock` is just `null` - the right column simply doesn't render in
+  either view.
