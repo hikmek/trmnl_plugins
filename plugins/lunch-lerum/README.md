@@ -1,9 +1,15 @@
-# Plugin #2 - School Lunch + Hemmamat (Lerums kommun)
+# Plugin #2 - "Matn" (School Lunch + Hemmamat + Dagens kock)
 
-TRMNL private plugin (Polling strategy) showing today's school lunch
-(grundskola/gymnasium) for Lerums kommun, plus the next few school days -
-and, on weekends (when there's no school lunch), the family's own
-"Hemmamat" home-cooked menu instead.
+TRMNL private plugin (Polling strategy), displayed on-device as **Matn**.
+Three independent sections share this one plugin/data feed:
+
+1. **Skolmatn** - today's school lunch (grundskola/gymnasium) for Lerums
+   kommun, plus the next few school days.
+2. **Hemmamatn** - on weekends (when there's no school lunch), the family's
+   own home-cooked menu instead.
+3. **Dagens kock** - unrelated in content to the other two: today's random
+   pick from the broforce plugin's portrait roster, shown Quadrant-only,
+   picture + name, right next to the lunch info.
 
 - Skolmat data source: [lerum.se lunch menu page](https://lerum.se/utbildning-och-barnomsorg/gemensamt-for-forskolor-och-skolor-i-lerums-kommun/maltider/matsedel-grundskola-och-gymnasium-hostterminen-2026) (Höstterminen 2026).
   No API - the page is scraped directly (plain server-rendered HTML, no JS
@@ -13,6 +19,10 @@ and, on weekends (when there's no school lunch), the family's own
   **Must be shared as "Anyone with the link" → Viewer** - `fetch.mjs` reads
   it via the public `gviz/tq` CSV export endpoint, no API key/login
   involved, same no-credentials approach as every other plugin here.
+- Dagens kock data source: `../broforce/portraits/manifest.json` - read
+  straight off disk (both plugins live in this same repo checkout), no
+  network call. See [plugin #5's README](../broforce/README.md) for what's
+  in that roster.
 
 ## How it works
 
@@ -33,12 +43,22 @@ and, on weekends (when there's no school lunch), the family's own
    also fetches the hemmamat sheet, computes today's **ISO 8601 week
    number** (Sweden's usual week numbering - matches the sheet's "vecka"
    column), and looks up that week's row.
-4. It writes `public/lunch-lerum/data.json` with today's menu (+ hemmamat,
-   on weekends) and a short skolmat look-ahead.
-5. GitHub Pages publishes it at:
+4. It also picks one random entry from the broforce roster for "Dagens
+   kock" - same mechanism as broforce/fetch.mjs's own Bro-of-the-day pick,
+   just done independently here (not necessarily the same Bro broforce
+   itself shows that day).
+5. It writes `public/lunch-lerum/data.json` with today's menu (+ hemmamat
+   on weekends, + dagens_kock every day) and a short skolmat look-ahead.
+6. GitHub Pages publishes it at:
    `https://hikmek.github.io/trmnl_plugins/lunch-lerum/data.json`
-6. Your TRMNL device (Private Plugin, Polling strategy) fetches that JSON
-   and renders it with `template.liquid`.
+7. Your TRMNL device (Private Plugin, Polling strategy) fetches that JSON
+   and renders it with `template.liquid` (Full) / `template.quadrant.liquid`
+   (Quadrant - also shows Dagens kock on the right).
+
+All of the above only actually runs once the Europe/Stockholm calendar
+date changes (step 1's throttle) - so **all three sections (skolmat,
+hemmamat, dagens kock) update together, right after midnight**, not on
+some independent schedule per section.
 
 ## One-time setup
 
@@ -68,7 +88,13 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
     "lunch_icon_url": null, // set only if the dish text matches a known keyword (see below)
     "vegetarian": null,    // null if only one option was published that day
     "vegetarian_icon_url": null,
-    "hemmamat": null       // set only on Lördag/Söndag when the sheet has a row for this week - see below
+    "hemmamat": null,      // set only on Lördag/Söndag when the sheet has a row for this week - see below
+    "dagens_kock": {       // today's random pick from the broforce roster - every day, not just weekends
+      "slug": "brominator",
+      "name": "Brominator",
+      "description": "T-800 from the Terminator franchise",
+      "image_url": "https://hikmek.github.io/trmnl_plugins/broforce/portraits/brominator.png"
+    }
   },
   "upcoming": [
     // next 4 school days found on the page after today, same shape as `today`
@@ -161,3 +187,8 @@ node plugins/lunch-lerum/fetch.mjs
 - If the sheet's sharing is ever changed back to "Restricted", the
   `gviz/tq` request starts failing (logged, non-fatal) and hemmamat quietly
   goes back to always-null until sharing is fixed.
+- **Dagens kock depends on `plugins/broforce/portraits/manifest.json`
+  existing in the repo.** If broforce is ever removed or that manifest is
+  moved, `pickDagensKock()` fails safely (logged, non-fatal) and
+  `dagens_kock` is just `null` - the Quadrant view's right column simply
+  doesn't render.

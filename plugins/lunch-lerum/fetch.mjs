@@ -9,7 +9,7 @@
 // When a new term's menu is published at a new URL, update SOURCE_URL (and
 // TERM_YEAR/TERM_LABEL) below.
 
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fetchWithRetry } from "../../lib/http.mjs";
@@ -54,6 +54,33 @@ const ICON_BASE_URL = "https://hikmek.github.io/trmnl_plugins/lunch-lerum/icons"
 // no-credentials approach as every other plugin in this repo.
 const HEMMAMAT_SHEET_ID = "1z0fEGn4A9hKnX-EZ9GycGjbZV_k0jb1_8mA-BRJrUqY";
 const HEMMAMAT_CSV_URL = `https://docs.google.com/spreadsheets/d/${HEMMAMAT_SHEET_ID}/gviz/tq?tqx=out:csv&gid=0`;
+
+// "Dagens kock" (today's chef) - a third, unrelated-in-content but same-
+// mechanism section: reuses the broforce plugin's own portrait roster
+// (read straight from its committed manifest.json - no network call, both
+// plugins live in this same repo) and picks one at random, same as
+// broforce/fetch.mjs does for its own "Bro of the day". This pick is
+// independent of broforce's own daily pick - lunch-lerum draws its own
+// random Bro each day, not necessarily the same one broforce shows.
+const DAGENS_KOCK_MANIFEST_PATH = path.join(__dirname, "..", "broforce", "portraits", "manifest.json");
+const DAGENS_KOCK_BASE_URL = "https://hikmek.github.io/trmnl_plugins/broforce/portraits";
+
+async function pickDagensKock() {
+  try {
+    const manifest = JSON.parse(await readFile(DAGENS_KOCK_MANIFEST_PATH, "utf8"));
+    if (!manifest.length) return null;
+    const pick = manifest[Math.floor(Math.random() * manifest.length)];
+    return {
+      slug: pick.slug,
+      name: pick.name,
+      description: pick.description,
+      image_url: `${DAGENS_KOCK_BASE_URL}/${pick.file}`,
+    };
+  } catch (err) {
+    console.error(`Could not pick Dagens kock from broforce roster - skipping: ${err.message}`);
+    return null;
+  }
+}
 
 // Extensible keyword -> icon mapping. First match wins, so more specific /
 // more visually distinctive categories are listed first (e.g. "köttbullar"
@@ -313,9 +340,14 @@ async function main() {
     }
   }
 
+  // Independent of weekday/weekend - picked fresh once a day, same as
+  // everything else in this function (gated by the shouldSkipDailyFetch
+  // check above).
+  const dagensKock = await pickDagensKock();
+
   const today =
     todayIndex >= 0
-      ? { ...days[todayIndex], hemmamat: null } // real published school days are always weekdays - no hemmamat
+      ? { ...days[todayIndex], hemmamat: null, dagens_kock: dagensKock } // real published school days are always weekdays - no hemmamat
       : {
           date: todayKey,
           weekday: fallbackWeekday,
@@ -330,6 +362,7 @@ async function main() {
           vegetarian: null,
           vegetarian_icon_url: null,
           hemmamat,
+          dagens_kock: dagensKock,
         };
 
   const upcoming =
