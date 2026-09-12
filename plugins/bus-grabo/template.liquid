@@ -1,31 +1,57 @@
 {%- comment -%}
   Paste this into the TRMNL Private Plugin "Markup" editor for the
-  bus-grabo plugin (Polling strategy). Field names match the JSON
-  produced by fetch.mjs (see data.json / README.md in this folder).
+  bus-grabo plugin (Polling strategy), "Full" tab.
 
-  Every line uses the same "label" component on purpose: TRMNL maps
-  "label" to a single pixel font (NicoClean / TRMNL16, per the active
-  bundle) at one fixed size on real e-ink devices, so using it for every
-  line - headers and departures alike - guarantees identical, pixelated
-  text throughout instead of mixing value/table fonts of different sizes.
+  Two single-line "next bus" countdowns (not a multi-departure list - see
+  fetch.mjs's nextDeparture()), for the same physical route observed at two
+  points: Mjörn (towards Gråbo) and Gråbo busstation (towards Göteborg).
 
-  View-only markup: no <div class="screen">/"view"> wrappers needed -
-  TRMNL's platform supplies those for private plugins.
+  Every text line uses "label" so size/font stays identical and pixelated
+  throughout (see README's "Markup style" section) - matches the previous
+  version's convention.
+
+  Position map: a single generated PNG (bus_position.map_image_url) showing
+  Sjövik -- Mjörn -- Gråbo as three dots on a line, with a bus marker at
+  the live GPS-derived position along that stretch (see fetch.mjs's
+  renderPositionMap()/computeBusPosition()). Rules learned the hard way in
+  weather-yr apply here too: this <img> uses class="image image--contain
+  image-dither" (not just "image"), and it is a single LONE <img> - never
+  placed as a flex sibling of another <img> - so it gets its own row.
 {%- endcomment -%}
 
 <div class="layout layout--col gap--medium">
 
-  <div class="label">MJÖRN AVGÅNG</div>
-  {% for dep in mjorn.departures %}
-  <div class="label">{{ dep.line }} {{ dep.destination }}{% if dep.is_cancelled %} (INSTÄLLD){% endif %} - {{ dep.estimated_time }}{% if dep.delay_minutes > 0 %} (+{{ dep.delay_minutes }}){% endif %} - {{ dep.minutes_until }} min</div>
-  {% endfor %}
+  <div class="layout layout--row layout--center-x">
+    <img class="image image--contain image-dither" src="{{ bus_position.map_image_url }}" width="480" height="56" style="width: 480px; height: 56px;">
+  </div>
+
+  <div class="layout layout--row" style="justify-content: space-between;">
+    <div class="label">Sjövik</div>
+    <div class="label">Mjörn</div>
+    <div class="label">Gråbo</div>
+  </div>
+
+  <div class="layout layout--row layout--center-x">
+    <div class="label">{{ bus_position.status_text }}</div>
+  </div>
 
   <div class="divider"></div>
 
-  <div class="label">-&gt; GÖTEBORG (Gråbo busstation)</div>
-  {% for dep in mjornbotorget_to_goteborg.departures %}
-  <div class="label">{{ dep.line }} {{ dep.destination }}{% if dep.is_cancelled %} (INSTÄLLD){% endif %} - {{ dep.estimated_time }}{% if dep.delay_minutes > 0 %} (+{{ dep.delay_minutes }}){% endif %} - {{ dep.minutes_until }} min</div>
-  {% endfor %}
+  <div class="label">{{ mjorn_to_grabo.label }}:</div>
+  {% if mjorn_to_grabo.has_departure %}
+  <div class="label">{{ mjorn_to_grabo.minutes_until }} min ({{ mjorn_to_grabo.estimated_time }}){% if mjorn_to_grabo.delay_minutes > 0 %} (+{{ mjorn_to_grabo.delay_minutes }}){% endif %}{% if mjorn_to_grabo.is_cancelled %} - INSTÄLLD{% endif %}</div>
+  {% else %}
+  <div class="label">Ingen avgång just nu</div>
+  {% endif %}
+
+  <div class="divider"></div>
+
+  <div class="label">{{ grabo_to_goteborg.label }}:</div>
+  {% if grabo_to_goteborg.has_departure %}
+  <div class="label">{{ grabo_to_goteborg.minutes_until }} min ({{ grabo_to_goteborg.estimated_time }}){% if grabo_to_goteborg.delay_minutes > 0 %} (+{{ grabo_to_goteborg.delay_minutes }}){% endif %}{% if grabo_to_goteborg.is_cancelled %} - INSTÄLLD{% endif %}</div>
+  {% else %}
+  <div class="label">Ingen avgång just nu</div>
+  {% endif %}
 
 </div>
 

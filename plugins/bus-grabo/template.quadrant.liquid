@@ -1,21 +1,28 @@
 {%- comment -%}
   Paste this into the "Quadrant" tab of the bus-grabo plugin's Edit Markup
   screen (separate from the "Full" tab's template.liquid). Compact version
-  for small Mashup panes - just the next departure from each board.
+  for small Mashup panes - just the two next-bus countdowns, no map image
+  (a Quadrant pane is too narrow for the 480px-wide position map to be
+  legible - it stays on the Full view only).
 
   Same rule as template.liquid: every line uses "label" so size/font stays
   identical and pixelated throughout.
 {%- endcomment -%}
 
-{% assign next_mjorn = mjorn.departures | first %}
-{% assign next_gbg = mjornbotorget_to_goteborg.departures | first %}
-
 <div class="layout layout--col gap--small">
-  <div class="label">MJÖRN AVGÅNG</div>
-  <div class="label">{{ next_mjorn.line }} {{ next_mjorn.destination }} - {{ next_mjorn.minutes_until }} min</div>
+  <div class="label">MJÖRN &gt; GRÅBO</div>
+  {% if mjorn_to_grabo.has_departure %}
+  <div class="label">{{ mjorn_to_grabo.minutes_until }} min{% if mjorn_to_grabo.delay_minutes > 0 %} (+{{ mjorn_to_grabo.delay_minutes }}){% endif %}</div>
+  {% else %}
+  <div class="label">Ingen avgång</div>
+  {% endif %}
 
-  <div class="label">-&gt; GÖTEBORG</div>
-  <div class="label">{{ next_gbg.line }} {{ next_gbg.destination }} - {{ next_gbg.minutes_until }} min</div>
+  <div class="label">GRÅBO &gt; GÖTEBORG</div>
+  {% if grabo_to_goteborg.has_departure %}
+  <div class="label">{{ grabo_to_goteborg.minutes_until }} min{% if grabo_to_goteborg.delay_minutes > 0 %} (+{{ grabo_to_goteborg.delay_minutes }}){% endif %}</div>
+  {% else %}
+  <div class="label">Ingen avgång</div>
+  {% endif %}
 </div>
 
 <div class="title_bar">
