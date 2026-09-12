@@ -30,6 +30,19 @@ const OUTPUT_PATH = path.join(__dirname, "..", "..", "public", "weather-yr", "da
 const USER_AGENT = "trmnl-plugins-hikmek/1.0 github.com/hikmek/trmnl_plugins";
 const ICON_BASE_URL = "https://hikmek.github.io/trmnl_plugins/weather-yr/icons";
 
+// Cache-busting suffix appended to every icon URL below. Without this, some
+// icon URLs (e.g. the "current condition" ones hit on every single render)
+// kept serving old cached bytes from whatever fetched/cached them first -
+// even after the underlying PNG files were fixed and re-deployed (see the
+// 1-bit-PNG fix in this file's history) - while other, less-frequently-hit
+// icon URLs (e.g. a specific forecast day's icon) picked up the new bytes
+// right away. Since the icon filenames never change, some layer between
+// GitHub Pages and the rendered device was caching by URL alone. Using the
+// short GitHub Actions commit SHA (falling back to the current date outside
+// CI) as a query string forces a new URL - and therefore a fresh fetch -
+// every time the icon files actually change.
+const ICON_VERSION = (process.env.GITHUB_SHA || new Date().toISOString().slice(0, 10)).slice(0, 8);
+
 // --- Multi-source current temperature -------------------------------------
 // current.temperature is the AVERAGE of whichever of these sources
 // actually respond (yr.no's own reading is always included - it's already
@@ -103,7 +116,7 @@ function clothingForTemperature(tempC) {
 }
 
 function clothingIconUrl(slug) {
-  return `${ICON_BASE_URL}/clothing-${slug}.png`;
+  return `${ICON_BASE_URL}/clothing-${slug}.png?v=${ICON_VERSION}`;
 }
 
 // Rain gear is proposed both when yr.no already has a nonzero precipitation
@@ -136,7 +149,7 @@ function iconForCode(code) {
 }
 
 function iconUrl(code) {
-  return `${ICON_BASE_URL}/${iconForCode(code)}.png`;
+  return `${ICON_BASE_URL}/${iconForCode(code)}.png?v=${ICON_VERSION}`;
 }
 
 async function loadSymbolMap() {
@@ -367,7 +380,7 @@ async function main() {
     clothing_icon_url: clothingIconUrl(clothing.slug),
     clothing_text: clothing.text,
     needs_rain_gear: needsRainGear,
-    rain_gear_icon_url: `${ICON_BASE_URL}/clothing-umbrella.png`,
+    rain_gear_icon_url: `${ICON_BASE_URL}/clothing-umbrella.png?v=${ICON_VERSION}`,
     rain_starts_at: rainStartsAt,
     rain_period_started_at: rainPeriodStartedAt,
     rain_period_ends_at: rainPeriodEndsAt,

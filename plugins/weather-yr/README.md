@@ -240,6 +240,18 @@ way. If you ever add new icons here, generate them the same way (or run
 `generate-clothing-icons.mjs`) and double check with `file icons/*.png`
 that they say "8-bit/color RGB", not "1-bit colormap" or "1-bit grayscale".
 
+**Icon URL cache-busting**: even after the 1-bit PNG files were fixed and
+redeployed, some icon URLs (particularly the "current condition" ones hit
+on every single render) kept showing the old broken image, while other,
+less-frequently-hit ones picked up the fix immediately - some layer
+between GitHub Pages and the rendered device was caching image bytes by
+URL. Since icon filenames never change run to run, `iconUrl()` /
+`clothingIconUrl()` / `rain_gear_icon_url` now append `?v=<short commit
+SHA>` (from `GITHUB_SHA`, set automatically in GitHub Actions; falls back
+to today's date outside CI) so the URL itself changes whenever the icon
+files might have, forcing a fresh fetch instead of serving a stale cached
+copy.
+
 The icon sizes in both templates are chosen to visually balance against
 `value--xxlarge` / `value--base` (per the repo's own size notes:
 `value--large` ≈ 58px, `value--xlarge` ≈ 74px) rather than an exact
