@@ -1,60 +1,76 @@
 # Plugin #3 - Bus Departures near Gråbo (Västtrafik)
 
-TRMNL private plugin (Polling strategy) tracking a single physical route -
-**line X3, Sjövik → Mjörn → Gråbo → Göteborg** - showing:
+TRMNL private plugin (Polling strategy) showing:
 
 1. **Next bus from Mjörn towards Gråbo** - a single countdown, not a list.
-   Mjörn is also served by local shuttle **line 525** towards Lerum/Sjövik
-   (the opposite direction - it never reaches Gråbo), so this board filters
-   to line X3 *and* excludes anything whose destination names Sjövik, to
-   keep only the Gråbo-bound direction.
-2. **Next bus from Gråbo busshållplats towards Göteborg** - same idea, at
-   the stop that actually serves Mjörnbotorget square in Gråbo, which is
+   This is **line 525** (Brobacka → Sjövik → Mjörn → Gråbo → Lerum), filtered
+   to exclude the away-from-Gråbo direction (destination Sjövik/Brobacka),
+   keeping only the Gråbo/Lerum-bound trips.
+2. **Next bus from Gråbo busshållplats towards Göteborg** - a *different,
+   unrelated* line, **X3** (Gråbo → Göteborg → Kullavik/Särö), at the stop
+   that actually serves Mjörnbotorget square in Gråbo, which is
    **"Gråbo busstation"** (~130m away; there's no stop literally named
-   "Mjörnbotorget"). Filtered to line X3, the only line from there that
-   runs via Göteborg (it stops at Polhemsplatsen, ~10 min walk from Nils
-   Ericson Terminalen) on its way further south to Kullavik/Särö.
-3. **Live position map** - where that same X3 bus currently is along the
-   Sjövik–Mjörn–Gråbo stretch, using real GPS (see below).
+   "Mjörnbotorget").
+3. **Live position map** - where each of those two buses currently is,
+   using real GPS (see below). The two boards are **not the same physical
+   bus** - line 525 terminates in Lerum and line X3 starts fresh at Gråbo,
+   they only meet at the Gråbo stop where a rider would change buses.
 
 - Data source: [Västtrafik "Planera Resa" API v4](https://developer.vasttrafik.se/)
 - Requires a **free** Västtrafik developer account + API credentials
   (unlike the weather/lunch plugins, this one needs an API key).
 
+## Line correction: it's 525, not X3, that connects Mjörn to Gråbo
+
+Earlier versions of this plugin assumed a single physical route on line X3
+ran Sjövik → Mjörn → Gråbo → Göteborg, and described line 525 (which
+actually stops at Mjörn) as "the local shuttle that never reaches Gråbo -
+not what's shown here". That was backwards. Confirmed via Västtrafik's own
+line 525 timetable and its OSM route relation ("Buss 525: Brobacka - Sjövik
+- Gråbo - Lerum"): **line 525 is the one that runs Sjövik → Mjörn → Gråbo →
+Lerum**. Line X3 never stops at Mjörn at all - it's a separate express line
+that only covers Gråbo → Göteborg (and on to Kullavik/Särö).
+
+This was caught via a live user report ("Västtrafik shows a departure at
+22:57, the plugin says no info") plus the `debug_raw_departures` diagnostic
+field added the previous version: `debug_all_x3.mjorn` (as it was called
+then) came back completely empty on every single run, because it was
+listing X3 departures at a stop X3 never serves - the very definition of
+filtering for the wrong line. `nextDeparture()` and `resolveRoute()`'s
+`/positions` call now use `MJORN_LINE = "525"` for the Mjörn board and
+`GRABO_LINE = "X3"` for the Gråbo board, kept as two separate constants
+specifically so they can never silently drift back to being "the same
+line" again.
+
 ## Post-mortem: "no departures" after the position-map update
 
-The single-next-bus rename + live position map (this plugin's second
-major version) shipped with a real bug: `fetch.mjs` started importing
-`sharp` (for the position-map PNG) at *fetch time*, but the shared
-workflow (`.github/workflows/build-pages.yml`) never ran `npm install`/
-`npm ci` - none of the other plugins' `fetch.mjs` scripts need any npm
-package at runtime (only the icon-generator scripts, which are run by
-hand, ever imported `sharp` before). So every run threw
-`Cannot find package 'sharp'` immediately - but because every fetch step
-uses `continue-on-error: true` (by design, so one plugin's outage doesn't
-block the others), the step still showed green, no new `data.json` was
-written, and the "Fall back to last published data" step just re-curled
-the previous (pre-update, old-schema) `data.json` every cycle. End result:
-Actions looked 100% healthy while silently serving stale data with the
-old field names - which the new template then rendered as "Ingen avgång
-just nu" for both boards, since it was reading fields
-(`mjorn_to_grabo.has_departure` etc.) that didn't exist in that stale
-JSON. Fixed by adding an `npm ci` step before the fetch steps - see that
-step's comment in the workflow file. If a future plugin update adds
-another npm dependency, remember this same install step now covers it too
-(no per-plugin install needed).
+(Kept for history - already fixed, unrelated to the line-number bug above.)
+The single-next-bus rename + live position map (this plugin's second major
+version) shipped with a real bug: `fetch.mjs` started importing `sharp`
+(for the position-map PNG) at *fetch time*, but the shared workflow
+(`.github/workflows/build-pages.yml`) never ran `npm install`/`npm ci` -
+none of the other plugins' `fetch.mjs` scripts need any npm package at
+runtime. So every run threw `Cannot find package 'sharp'` immediately -
+but because every fetch step uses `continue-on-error: true` (by design, so
+one plugin's outage doesn't block the others), the step still showed
+green, no new `data.json` was written, and the "Fall back to last
+published data" step just re-curled the previous (stale) `data.json` every
+cycle. Fixed by adding an `npm ci` step before the fetch steps.
 
 ## How it works
 
-1. `.github/workflows/build-pages.yml` runs `fetch.mjs` every 30 minutes
-   (same shared workflow as the other plugins).
+1. `.github/workflows/build-pages.yml` runs `fetch.mjs` every ~10 minutes
+   (throttled internally - see `lib/throttle.mjs`; the shared workflow
+   itself runs every 5 minutes for the banksy plugin's sake).
 2. `fetch.mjs` requests a fresh OAuth2 access token (client_credentials
    grant) using the `VASTTRAFIK_AUTH_KEY` secret, then:
    - calls `/stop-areas/{gid}/departures` for both stops and picks the
-     single next X3 departure at each (see `nextDeparture()`);
+     single next relevant departure at each - line 525 (Gråbo-bound) at
+     Mjörn, line X3 at Gråbo (see `nextDeparture()`);
    - resolves Sjövik/Mjörn/Gråbo to coordinates via `/locations/by-text`
-     and calls `/positions` once (bounding box + `lineDesignations=X3`) for
-     every X3 vehicle GPS fix currently in that area (see `resolveRoute()`);
+     and calls `/positions` once (bounding box + `lineDesignations=525,X3`)
+     for every matching vehicle GPS fix currently in that area (see
+     `resolveRoute()`);
    - matches *each* departure to its own live fix by `detailsReference`
      (see `describeDeparturePosition()`), producing a `bus_name` + human
      `bus_location` string per departure - not just one overall position;
@@ -66,7 +82,8 @@ another npm dependency, remember this same install step now covers it too
 4. GitHub Pages publishes both at `https://hikmek.github.io/trmnl_plugins/bus-grabo/`.
 5. Your TRMNL device (Private Plugin, Polling strategy) fetches the JSON
    and renders it with `template.liquid` (Full) / `template.quadrant.liquid`
-   (Mashup pane - text only, no map image, see that file's comment).
+   (Mashup pane - same countdown + bus-info lines, no map image, see that
+   file's comment).
 
 ## The live position map, and why it's real GPS (not a schedule guess)
 
@@ -84,9 +101,9 @@ get back real-time `{ latitude, longitude, name, line, direction, detailsReferen
 for every matching vehicle currently running. That's genuine GPS, not an
 estimate from the timetable - confirmed via the API's own OpenAPI/swagger
 model docs. `resolveRoute()` calls it with a box drawn tightly around
-Sjövik/Mjörn/Gråbo (padded ~2km) and `lineDesignations: ["X3"]`, so it
-should only ever pick up vehicles relevant to this route (or none, if no
-X3 is currently running that stretch, e.g. off-hours).
+Sjövik/Mjörn/Gråbo (padded ~2km) and `lineDesignations: ["525", "X3"]`
+(both lines, since either board's bus could be in that box at once), so it
+should only ever pick up vehicles relevant to these two boards.
 
 Each departure is then matched to its own fix in that result set by
 `detailsReference` (`describeDeparturePosition()`) - the same field name
@@ -95,55 +112,51 @@ departures endpoint and "journey reference" on the positions endpoint,
 which is exactly the kind of shared id meant to link the two. **This
 specific assumption hasn't been confirmed against a live response** (no
 Västtrafik credentials were available in the sandbox this was built in) -
-if `bus_location` always comes back "Position okänd" after deploying this,
-that match is the first thing to check (log a raw `/positions` result and
-a raw departure's `detailsReference` side by side).
+if `bus_location` always comes back "Position okänd" even for a departure
+that's clearly already en route, that match is the first thing to check
+(log a raw `/positions` result and a raw departure's `detailsReference`
+side by side).
 
 **Known gap:** the map currently only plots the 3 confirmed endpoints
-(Sjövik / Mjörn / Gråbo) - the user's original ask was for "the 5 stops
+(Sjövik / Mjörn / Gråbo) - an earlier request also asked for "the 5 stops
 from Sjövik before Mjörn". Those exact intermediate stop names couldn't be
-verified from the sandbox this was built in (no live Västtrafik credentials
-available there, and public route-order sources for this specific stretch
-were inconsistent). If you give the 5 names in order, they drop straight
-into `ROUTE_STOP_QUERIES` in `fetch.mjs` (each is resolved to coordinates
-automatically via `/locations/by-text` - no manual lat/long lookup needed)
-and `renderPositionMap()`'s marker loop extends to plot all of them.
+verified from the sandbox this was built in. If you give the 5 names in
+order, they drop straight into `ROUTE_STOP_QUERIES` in `fetch.mjs` (each is
+resolved to coordinates automatically via `/locations/by-text` - no manual
+lat/long lookup needed) and `renderPositionMap()`'s marker loop extends to
+plot all of them.
 
-**Also unverified (first live run will tell):** the exact field names in
-`/positions`'s response, and whether Mjörn-direction filtering by "doesn't
-mention Sjövik in the destination text" correctly isolates the Gråbo-bound
-X3 departures. Check the Actions log / a manual `node fetch.mjs` run after
-first deploying this - if `bus_position.available` is always `false` or
-`mjorn_to_grabo` never finds a departure, that's the place to look first.
+## Debugging "Ingen avgång" (no departure) or a wrong/missing line
 
-## Debugging "Ingen avgång" (no departure)
+If `mjorn_to_grabo.has_departure` (or `grabo_to_goteborg`'s) is `false`, or
+shows the wrong line entirely, when you're sure a bus should be coming,
+there are a few different possible causes:
 
-If `mjorn_to_grabo.has_departure` (or `grabo_to_goteborg`'s) is `false`
-when you're sure a bus should be coming, there are two very different
-possible causes and they need different fixes:
+1. **Genuinely nothing scheduled soon in that direction** - regional/local
+   routes like these often thin out or stop entirely late evening/weekends;
+   the next one might just be a while away or not until the next service
+   day. Not a bug - check Västtrafik's own journey planner for the same
+   stop/time to confirm.
+2. **The line number is wrong** - this already happened once (see "Line
+   correction" above: X3 was used where 525 was needed). If a board never
+   finds a departure no matter the time of day, suspect this first.
+3. **The direction filter (`isTowardsGrabo()`) is wrong** - it excludes
+   destinations naming Sjövik/Brobacka to keep only the Gråbo-bound
+   direction. If Västtrafik's actual headsigns don't work that way (e.g.
+   showing a via-line name instead of the true endpoint), this filter
+   could silently exclude (or include) the wrong trips.
 
-1. **Genuinely no X3 scheduled soon in that direction** - regional routes
-   like this often thin out or stop entirely late evening/weekends; the
-   next one might just be an hour away or not until the next service day.
-   Not a bug - check Västtrafik's own journey planner for the same stop/
-   time to confirm.
-2. **The direction filter (`isTowardsGrabo()`) is wrong** - it currently
-   assumes a Sjövik-bound X3's destination text contains "Sjövik" and
-   excludes those, keeping everything else. If Västtrafik's actual
-   headsigns for this line don't work that way (e.g. both directions show
-   a via-line name instead of the true endpoint), this filter could be
-   silently excluding (or including) the wrong trips entirely.
-
-To tell these apart without guessing, `data.json` includes a **temporary**
-`debug_all_x3` field - `{ mjorn: [...], grabo: [...] }`, each item
-`{ destination, planned_time, minutes_until }` for *every* X3 departure at
-that stop, completely unfiltered by direction (see `debugAllX3()` in
-`fetch.mjs`). Neither template reads it - it's purely for checking, next
-time `data.json` refreshes, whether e.g. `mjorn.debug_all_x3` actually
-contains an upcoming Gråbo-bound trip that `mjorn_to_grabo` wrongly missed
-(cause 2), or is empty/genuinely all past (cause 1). Once direction
-filtering is confirmed correct, `debug_all_x3` can be deleted from
-`fetch.mjs` and both templates already ignore it either way.
+To tell these apart without guessing, `data.json` includes a
+`debug_raw_departures` field - `{ mjorn: [...], grabo: [...] }`, each item
+`{ line, destination, planned_time, minutes_until }` for the next 10 raw
+departures at that stop, **any line, completely unfiltered by direction**
+(see `debugRawDepartures()` in `fetch.mjs`). Neither template reads it -
+it's purely for checking, next time `data.json` refreshes, what's actually
+scheduled at that stop right now. This is exactly what would have caught
+the line-number bug immediately (line 525's real departures would have
+been sitting right there in the raw list, under the wrong line name filter)
+instead of needing a live user report first - keep this field around, it's
+cheap and has already paid for itself once.
 
 ## One-time setup
 
@@ -174,7 +187,7 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
   consider lowering the workflow's cron interval too if you want tighter
   real-time accuracy)
 - Markup (Full tab): paste `template.liquid`
-- Markup (Quadrant tab): paste `template.quadrant.liquid` - now includes a
+- Markup (Quadrant tab): paste `template.quadrant.liquid` - includes a
   compact bus-name/position line under each countdown too, not just the
   Full view
 
@@ -196,19 +209,19 @@ another `<img>` - so it gets its own row, separate from the text rows.
 ```jsonc
 {
   "plugin": "bus-grabo",
-  "generated_at": "2026-09-12T19:16:09.528Z",
-  "updated_display": "Data uppdaterad kl 21:16 idag",
+  "generated_at": "2026-09-12T20:16:09.528Z",
+  "updated_display": "Data uppdaterad kl 22:16 idag",
   "mjorn_to_grabo": {
     "label": "Nästa buss från Mjörn mot Gråbo kommer om",
     "stop_name": "Mjörn, Lerum",
-    "line": "X3",
+    "line": "525",
     "has_departure": true,
     "minutes_until": 11,
-    "estimated_time": "19:27",
+    "estimated_time": "22:27",
     "delay_minutes": 0,
     "is_cancelled": false,
-    "destination": "Göteborg",
-    "bus_name": "X3 mot Särö",              // from /positions' "name" field, or null if no live fix matched
+    "destination": "Lerum",
+    "bus_name": "525 mot Lerum",             // from /positions' "name" field, or null if no live fix matched
     "bus_location": "Mellan Sjövik och Mjörn (31%)"
   },
   "grabo_to_goteborg": {
@@ -218,7 +231,7 @@ another `<img>` - so it gets its own row, separate from the text rows.
     "via_note": "Line X3 stops at Polhemsplatsen, Göteborg (~10 min walk to Nils Ericson Terminalen)",
     "has_departure": true,
     "minutes_until": 26,
-    "estimated_time": "19:42",
+    "estimated_time": "22:42",
     "delay_minutes": 0,
     "is_cancelled": false,
     "destination": "Särö",
@@ -229,6 +242,10 @@ another `<img>` - so it gets its own row, separate from the text rows.
     "available": true,          // true if at least one of the two departures above has a live fix
     "mjorn_fraction": 0.42,     // where Mjörn sits along the Sjövik(0)->Gråbo(1) line, for drawing the map
     "map_image_url": "https://hikmek.github.io/trmnl_plugins/bus-grabo/position-map.png?v=1757700000000"
+  },
+  "debug_raw_departures": {
+    "mjorn": [ { "line": "525", "destination": "Lerum", "planned_time": "22:27", "minutes_until": 11 } /* ... up to 10 */ ],
+    "grabo": [ { "line": "X3", "destination": "Särö", "planned_time": "22:42", "minutes_until": 26 } /* ... up to 10 */ ]
   }
 }
 ```
@@ -251,8 +268,9 @@ node plugins/bus-grabo/fetch.mjs
 Remove-Item Env:\VASTTRAFIK_AUTH_KEY
 ```
 
-This is also the fastest way to check the two "unverified" items noted
-above - the script logs the full `data.json` contents to the console.
+This is also the fastest way to check the unverified `detailsReference`
+matching noted above - the script logs the full `data.json` contents,
+`debug_raw_departures` included, to the console.
 
 ## Known limitations / maintenance
 
@@ -262,11 +280,12 @@ above - the script logs the full `data.json` contents to the console.
   `GET /pr/v4/locations/by-text?q=<name>` (Bearer token required). The
   three route-map points (`ROUTE_STOP_QUERIES`) are resolved by *name* at
   every fetch instead, so they don't need re-hardcoding if a stop moves.
-- **Line X3 is hardcoded** as "the line that runs Sjövik → Mjörn → Gråbo →
-  Göteborg". If Västtrafik changes the route network in the future, verify
-  with a direct journey search:
-  `GET /pr/v4/journeys?originGid=<GRABO_GID>&destinationGid=9021014004940000&onlyDirectConnections=true`
-  (destination gid is Nils Ericson Terminalen, Göteborg).
+- **`MJORN_LINE` ("525") and `GRABO_LINE` ("X3") are hardcoded and
+  deliberately kept as two separate constants** (see "Line correction"
+  above - they used to both be "X3", which was wrong). If Västtrafik
+  changes the route network in the future, re-verify each independently
+  against `debug_raw_departures` rather than assuming they're still the
+  same line as each other.
 - **`/positions` and `/locations/by-text` are undocumented on Västtrafik's
   public developer portal pages** (found via the v4 API's own OpenAPI
   schema instead) - if Västtrafik ever changes their shape without notice,
@@ -283,5 +302,5 @@ above - the script logs the full `data.json` contents to the console.
   caching/refresh logic needed.
 - `MJORN_QUERY_LIMIT` / `GRABO_QUERY_LIMIT` (20) control how many raw
   departures are fetched per stop before filtering down to the single next
-  X3 one - Mjörn especially needs a generous limit since it's dominated by
-  the more frequent local line 525.
+  relevant one - Mjörn especially needs a generous limit since line 525
+  runs both directions through it.

@@ -1,11 +1,24 @@
 // TRMNL Plugin #3: Bus departures near Gråbo (Västtrafik)
 //
-// Tracks a single physical route: line X3, Sjövik -> Mjörn -> Gråbo ->
-// Göteborg. Two single-line "next bus" countdowns are two vantage points
-// on that same route:
-//   1. "Mjörn, Lerum" stop-area, filtered to line X3 towards Gråbo/Göteborg
-//      (Mjörn is also served by local shuttle line 525 towards Lerum/
-//      Sjövik - that line is NOT what's shown here, it never reaches Gråbo).
+// LINE CORRECTION (found via the debug_all_x3 diagnostic - see git log):
+// this plugin previously assumed a single physical route on line X3 ran
+// Sjövik -> Mjörn -> Gråbo -> Göteborg, and filtered BOTH boards to X3.
+// That was wrong. Line X3 never stops at Mjörn at all (confirmed live -
+// debug_all_x3.mjorn came back completely empty, every single run,
+// regardless of direction filtering). The line that actually runs
+// Sjövik -> Mjörn -> Gråbo -> Lerum is the LOCAL SHUTTLE, **line 525**
+// (endpoints Brobacka and Lerum, per Västtrafik's own line 525 timetable
+// and OSM's route relation) - the exact line this plugin previously
+// described as "never reaches Gråbo", which was the actual bug. X3 is a
+// separate, unrelated express line that only covers Gråbo -> Göteborg (and
+// on to Kullavik/Särö) - it doesn't touch Sjövik or Mjörn.
+//
+// So the two boards below are two DIFFERENT lines and NOT the same
+// physical bus - they only meet at Gråbo, where a rider would actually
+// change buses:
+//   1. "Mjörn, Lerum" stop-area, filtered to line 525, keeping only the
+//      Gråbo-bound direction (destination NOT Sjövik/Brobacka - those
+//      head the other way, away from Gråbo).
 //   2. "Gråbo busstation" stop-area (serves Mjörnbotorget square, ~130m
 //      away - there's no stop literally named "Mjörnbotorget"), filtered
 //      to line X3 towards Göteborg (it stops at Polhemsplatsen, ~10 min
@@ -15,18 +28,21 @@
 // Also computes, for EACH of the two departures above, a live "where is
 // this specific bus right now" position along the Sjövik -> Mjörn -> Gråbo
 // stretch, using Västtrafik's own real-time vehicle-position endpoint
-// (GET /positions?lowerLeftLat=...&lineDesignations=X3 - a bounding-box
-// query, undocumented in the public developer portal pages but present in
-// the v4 API's OpenAPI schema and backed by the same OAuth credentials as
-// everything else here). This is genuine GPS, not a schedule estimate -
-// confirmed via the API's own swagger model docs (JourneyPositionApiModel:
-// latitude/longitude/name/line/direction/detailsReference), unlike
-// Trafiklab's public GTFS-Realtime mirror, which explicitly does NOT carry
-// real-time vehicle positions for Västtrafik (static schedule data only,
-// per Trafiklab's own coverage table) - that mirror was the first thing
-// checked and is a dead end for this operator; the operator's own "Planera
-// Resa" v4 API is the one that actually has it. Each departure is matched
-// to its own live fix by `detailsReference` (see describeDeparturePosition()).
+// (GET /positions?lowerLeftLat=...&lineDesignations=525,X3 - a
+// bounding-box query, undocumented in the public developer portal pages
+// but present in the v4 API's OpenAPI schema and backed by the same OAuth
+// credentials as everything else here). This is genuine GPS, not a
+// schedule estimate - confirmed via the API's own swagger model docs
+// (JourneyPositionApiModel: latitude/longitude/name/line/direction/
+// detailsReference), unlike Trafiklab's public GTFS-Realtime mirror,
+// which explicitly does NOT carry real-time vehicle positions for
+// Västtrafik (static schedule data only, per Trafiklab's own coverage
+// table) - that mirror was the first thing checked and is a dead end for
+// this operator; the operator's own "Planera Resa" v4 API is the one that
+// actually has it. Each departure is matched to its own live fix by
+// `detailsReference` (see describeDeparturePosition()) - both lines are
+// requested from /positions in one call since the two boards' buses can
+// both be in the same small bounding box near Gråbo at once.
 //
 // The three route points (Sjövik busstation, Mjörn, Gråbo busstation) are
 // resolved to lat/long at fetch time via GET /locations/by-text, rather
@@ -73,15 +89,16 @@ const TOKEN_URL = "https://ext-api.vasttrafik.se/token";
 
 const MJORN_GID = "9021014017430000"; // "Mjörn, Lerum" stop-area
 const GRABO_GID = "9021014017320000"; // "Gråbo busstation, Lerum" stop-area - serves Mjörnbotorget
-const LINE_FILTER = "X3"; // the only line that runs Sjövik -> Mjörn -> Gråbo -> Göteborg
+const MJORN_LINE = "525"; // Sjövik -> Mjörn -> Gråbo -> Lerum (see the LINE CORRECTION note above - NOT X3)
+const GRABO_LINE = "X3"; // Gråbo -> Göteborg -> Kullavik/Särö - a different, unrelated line from MJORN_LINE
 
 // Extra stop-area queries for a richer map, once known (see NOTE above) -
 // insert names in order between "Sjövik busstation, Lerum" and
 // "Mjörn, Lerum" in ROUTE_STOP_QUERIES further down.
 const ROUTE_STOP_QUERIES = ["Sjövik busstation, Lerum", "Mjörn, Lerum", "Gråbo busstation, Lerum"];
 
-const MJORN_QUERY_LIMIT = 20; // Mjörn's board is dominated by frequent local line 525 - ask for
-// more results than the old flat DEPARTURE_LIMIT so an X3 departure isn't missed further down the list.
+const MJORN_QUERY_LIMIT = 20; // line 525 runs both directions through Mjörn - ask for enough
+// raw results that the next Gråbo-bound one isn't missed further down the list.
 const GRABO_QUERY_LIMIT = 20;
 const MAX_ROUTE_DEVIATION_METERS = 1500; // beyond this, treat the bus as "not on this stretch right now"
 
@@ -192,21 +209,20 @@ function formatDeparture(raw, nowMs) {
   };
 }
 
-// Mjörn is served by both line X3 (towards Gråbo/Göteborg) and local
-// shuttle line 525 (towards Lerum/Sjövik - the opposite direction, never
-// reaches Gråbo). Line-filtering to X3 already excludes 525, but X3 itself
-// passes Mjörn in both directions (inbound from Göteborg towards Sjövik
-// too) - exclude anything whose destination text names Sjövik to keep only
-// the Gråbo-bound direction.
+// Line 525 runs both directions through Mjörn: Brobacka/Sjövik-bound (away
+// from Gråbo) and Gråbo/Lerum-bound (through Gråbo). Exclude anything whose
+// destination text names either of the away-from-Gråbo endpoints to keep
+// only the Gråbo-bound direction.
+const AWAY_FROM_GRABO_DESTINATIONS = ["sjövik", "sjovik", "brobacka"];
 function isTowardsGrabo(raw) {
   const dest = (raw.serviceJourney?.directionDetails?.shortDirection ?? raw.serviceJourney?.direction ?? "").toLowerCase();
-  return !dest.includes("sjövik") && !dest.includes("sjovik");
+  return !AWAY_FROM_GRABO_DESTINATIONS.some((away) => dest.includes(away));
 }
 
-function nextDeparture(rawDepartures, nowMs, { requireTowardsGrabo }) {
+function nextDeparture(rawDepartures, nowMs, { line, requireTowardsGrabo }) {
   return (
     rawDepartures
-      .filter((d) => d.serviceJourney?.line?.shortName === LINE_FILTER)
+      .filter((d) => d.serviceJourney?.line?.shortName === line)
       .filter((d) => !requireTowardsGrabo || isTowardsGrabo(d))
       .map((d) => formatDeparture(d, nowMs))
       .filter((d) => d.minutes_until >= 0)
@@ -214,19 +230,18 @@ function nextDeparture(rawDepartures, nowMs, { requireTowardsGrabo }) {
   );
 }
 
-// TEMPORARY diagnostic: every X3 departure at a stop, unfiltered by
-// direction or time, so a "no departure" result can be told apart from
-// "genuinely none scheduled soon" vs. "the direction filter is wrong" -
-// see the README's "Debugging 'Ingen avgång'" section. Safe to delete
-// once mjorn_to_grabo/grabo_to_goteborg are confirmed correct on a few
-// live runs.
-function debugAllX3(rawDepartures, nowMs) {
-  return rawDepartures
-    .filter((d) => d.serviceJourney?.line?.shortName === LINE_FILTER)
-    .map((d) => {
-      const f = formatDeparture(d, nowMs);
-      return { destination: f.destination, planned_time: f.planned_time, minutes_until: f.minutes_until };
-    });
+// Diagnostic: every raw departure at a stop (any line, unfiltered by
+// direction), so a future "no departure"/wrong-direction surprise can be
+// checked directly against real data instead of guessed at - this is
+// exactly what caught the line-number bug documented at the top of this
+// file (debug_all_x3.mjorn was always empty because X3 never stops there;
+// this generalized version would have shown the real line 525 departures
+// immediately instead of needing a live user report first).
+function debugRawDepartures(rawDepartures, nowMs, limit = 10) {
+  return rawDepartures.slice(0, limit).map((d) => {
+    const f = formatDeparture(d, nowMs);
+    return { line: f.line, destination: f.destination, planned_time: f.planned_time, minutes_until: f.minutes_until };
+  });
 }
 
 // --- Route geometry: haversine distance + point-to-polyline projection ---
@@ -333,7 +348,7 @@ async function resolveRoute(token) {
     maxLat: Math.max(...lats) + pad,
     minLon: Math.min(...lons) - pad,
     maxLon: Math.max(...lons) + pad,
-    lineDesignations: [LINE_FILTER],
+    lineDesignations: [MJORN_LINE, GRABO_LINE], // both boards' buses can be in this box at once (they meet at Gråbo)
   });
 
   return { routePoints, mjornFraction, positions };
@@ -471,10 +486,10 @@ async function main() {
     getDepartures(token, GRABO_GID, GRABO_QUERY_LIMIT),
   ]);
 
-  const mjornNext = nextDeparture(mjornRaw, nowMs, { requireTowardsGrabo: true });
-  const graboNext = nextDeparture(graboRaw, nowMs, { requireTowardsGrabo: false });
-  const debugMjornX3 = debugAllX3(mjornRaw, nowMs);
-  const debugGraboX3 = debugAllX3(graboRaw, nowMs);
+  const mjornNext = nextDeparture(mjornRaw, nowMs, { line: MJORN_LINE, requireTowardsGrabo: true });
+  const graboNext = nextDeparture(graboRaw, nowMs, { line: GRABO_LINE, requireTowardsGrabo: false });
+  const debugMjorn = debugRawDepartures(mjornRaw, nowMs);
+  const debugGrabo = debugRawDepartures(graboRaw, nowMs);
 
   // Route + live positions: resolved once, then matched per-departure below.
   // Wrapped here (not inside resolveRoute itself) so a failure still lets us
@@ -505,7 +520,7 @@ async function main() {
     mjorn_to_grabo: {
       label: "Nästa buss från Mjörn mot Gråbo kommer om",
       stop_name: "Mjörn, Lerum",
-      line: LINE_FILTER,
+      line: MJORN_LINE,
       has_departure: !!mjornNext,
       minutes_until: mjornNext?.minutes_until ?? null,
       estimated_time: mjornNext?.estimated_time ?? null,
@@ -518,7 +533,7 @@ async function main() {
     grabo_to_goteborg: {
       label: "Nästa buss från Gråbo busshållplats mot Göteborg kommer om",
       stop_name: "Mjörnbotorget (Gråbo busstation)",
-      line: LINE_FILTER,
+      line: GRABO_LINE,
       via_note: "Line X3 stops at Polhemsplatsen, Göteborg (~10 min walk to Nils Ericson Terminalen)",
       has_departure: !!graboNext,
       minutes_until: graboNext?.minutes_until ?? null,
@@ -534,8 +549,8 @@ async function main() {
       mjorn_fraction: mjornFraction,
       map_image_url: `${MAP_IMAGE_PUBLIC_URL}?v=${nowMs}`,
     },
-    // TEMPORARY - see debugAllX3()'s comment. Not used by either template.
-    debug_all_x3: { mjorn: debugMjornX3, grabo: debugGraboX3 },
+    // Diagnostic only - see debugRawDepartures()'s comment. Not used by either template.
+    debug_raw_departures: { mjorn: debugMjorn, grabo: debugGrabo },
   };
 
   await writeFile(OUTPUT_PATH, JSON.stringify(output, null, 2));
