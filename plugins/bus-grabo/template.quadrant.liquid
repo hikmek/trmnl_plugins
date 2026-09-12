@@ -1,9 +1,15 @@
 {%- comment -%}
   Paste this into the "Quadrant" tab of the bus-grabo plugin's Edit Markup
   screen (separate from the "Full" tab's template.liquid). Compact version
-  for small Mashup panes - just the two next-bus countdowns, no map image
-  (a Quadrant pane is too narrow for the 480px-wide position map to be
-  legible - it stays on the Full view only).
+  for small Mashup panes: the two next-bus countdowns, each immediately
+  followed by a one-line "bus name - position" row (no separate map image -
+  a Quadrant pane is too narrow for the 480px-wide position map to be
+  legible; that stays on the Full view only).
+
+  bus_location is always a non-empty string once has_departure is true
+  (see fetch.mjs's describeDeparturePosition()) - it explains itself even
+  when there's no live GPS fix yet ("Position okänd...", "Utanför
+  Sjövik-Gråbo...", etc), so this line is always meaningful, never blank.
 
   Same rule as template.liquid: every line uses "label" so size/font stays
   identical and pixelated throughout.
@@ -13,6 +19,7 @@
   <div class="label">MJÖRN &gt; GRÅBO</div>
   {% if mjorn_to_grabo.has_departure %}
   <div class="label">{{ mjorn_to_grabo.minutes_until }} min{% if mjorn_to_grabo.delay_minutes > 0 %} (+{{ mjorn_to_grabo.delay_minutes }}){% endif %}</div>
+  <div class="label">{{ mjorn_to_grabo.bus_name | default: mjorn_to_grabo.line }} - {{ mjorn_to_grabo.bus_location }}</div>
   {% else %}
   <div class="label">Ingen avgång</div>
   {% endif %}
@@ -20,6 +27,7 @@
   <div class="label">GRÅBO &gt; GÖTEBORG</div>
   {% if grabo_to_goteborg.has_departure %}
   <div class="label">{{ grabo_to_goteborg.minutes_until }} min{% if grabo_to_goteborg.delay_minutes > 0 %} (+{{ grabo_to_goteborg.delay_minutes }}){% endif %}</div>
+  <div class="label">{{ grabo_to_goteborg.bus_name | default: grabo_to_goteborg.line }} - {{ grabo_to_goteborg.bus_location }}</div>
   {% else %}
   <div class="label">Ingen avgång</div>
   {% endif %}

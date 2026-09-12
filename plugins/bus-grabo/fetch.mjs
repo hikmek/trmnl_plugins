@@ -214,6 +214,21 @@ function nextDeparture(rawDepartures, nowMs, { requireTowardsGrabo }) {
   );
 }
 
+// TEMPORARY diagnostic: every X3 departure at a stop, unfiltered by
+// direction or time, so a "no departure" result can be told apart from
+// "genuinely none scheduled soon" vs. "the direction filter is wrong" -
+// see the README's "Debugging 'Ingen avgång'" section. Safe to delete
+// once mjorn_to_grabo/grabo_to_goteborg are confirmed correct on a few
+// live runs.
+function debugAllX3(rawDepartures, nowMs) {
+  return rawDepartures
+    .filter((d) => d.serviceJourney?.line?.shortName === LINE_FILTER)
+    .map((d) => {
+      const f = formatDeparture(d, nowMs);
+      return { destination: f.destination, planned_time: f.planned_time, minutes_until: f.minutes_until };
+    });
+}
+
 // --- Route geometry: haversine distance + point-to-polyline projection ---
 
 function toRad(deg) {
@@ -458,6 +473,8 @@ async function main() {
 
   const mjornNext = nextDeparture(mjornRaw, nowMs, { requireTowardsGrabo: true });
   const graboNext = nextDeparture(graboRaw, nowMs, { requireTowardsGrabo: false });
+  const debugMjornX3 = debugAllX3(mjornRaw, nowMs);
+  const debugGraboX3 = debugAllX3(graboRaw, nowMs);
 
   // Route + live positions: resolved once, then matched per-departure below.
   // Wrapped here (not inside resolveRoute itself) so a failure still lets us
@@ -517,6 +534,8 @@ async function main() {
       mjorn_fraction: mjornFraction,
       map_image_url: `${MAP_IMAGE_PUBLIC_URL}?v=${nowMs}`,
     },
+    // TEMPORARY - see debugAllX3()'s comment. Not used by either template.
+    debug_all_x3: { mjorn: debugMjornX3, grabo: debugGraboX3 },
   };
 
   await writeFile(OUTPUT_PATH, JSON.stringify(output, null, 2));

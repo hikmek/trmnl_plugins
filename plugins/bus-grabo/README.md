@@ -116,6 +116,35 @@ X3 departures. Check the Actions log / a manual `node fetch.mjs` run after
 first deploying this - if `bus_position.available` is always `false` or
 `mjorn_to_grabo` never finds a departure, that's the place to look first.
 
+## Debugging "Ingen avgång" (no departure)
+
+If `mjorn_to_grabo.has_departure` (or `grabo_to_goteborg`'s) is `false`
+when you're sure a bus should be coming, there are two very different
+possible causes and they need different fixes:
+
+1. **Genuinely no X3 scheduled soon in that direction** - regional routes
+   like this often thin out or stop entirely late evening/weekends; the
+   next one might just be an hour away or not until the next service day.
+   Not a bug - check Västtrafik's own journey planner for the same stop/
+   time to confirm.
+2. **The direction filter (`isTowardsGrabo()`) is wrong** - it currently
+   assumes a Sjövik-bound X3's destination text contains "Sjövik" and
+   excludes those, keeping everything else. If Västtrafik's actual
+   headsigns for this line don't work that way (e.g. both directions show
+   a via-line name instead of the true endpoint), this filter could be
+   silently excluding (or including) the wrong trips entirely.
+
+To tell these apart without guessing, `data.json` includes a **temporary**
+`debug_all_x3` field - `{ mjorn: [...], grabo: [...] }`, each item
+`{ destination, planned_time, minutes_until }` for *every* X3 departure at
+that stop, completely unfiltered by direction (see `debugAllX3()` in
+`fetch.mjs`). Neither template reads it - it's purely for checking, next
+time `data.json` refreshes, whether e.g. `mjorn.debug_all_x3` actually
+contains an upcoming Gråbo-bound trip that `mjorn_to_grabo` wrongly missed
+(cause 2), or is empty/genuinely all past (cause 1). Once direction
+filtering is confirmed correct, `debug_all_x3` can be deleted from
+`fetch.mjs` and both templates already ignore it either way.
+
 ## One-time setup
 
 ### 1. Get Västtrafik API credentials (if not already done)
@@ -145,7 +174,9 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
   consider lowering the workflow's cron interval too if you want tighter
   real-time accuracy)
 - Markup (Full tab): paste `template.liquid`
-- Markup (Quadrant tab): paste `template.quadrant.liquid`
+- Markup (Quadrant tab): paste `template.quadrant.liquid` - now includes a
+  compact bus-name/position line under each countdown too, not just the
+  Full view
 
 ## Markup style: plain lines, not a table
 
