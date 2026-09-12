@@ -37,6 +37,13 @@
   Clothing proposal: current.clothing_icon_url is picked from the
   (averaged) current temperature (see fetch.mjs's CLOTHING_BANDS); when
   current.needs_rain_gear is true, an umbrella icon is shown alongside it.
+
+  Rain forecast text (centered, below the icons/temperature row):
+  current.rain_forecast_text is "Inget regn i sikte!" when no rain is
+  expected within the next 60 minutes, or "Det börjar regna kl HH:MM
+  idag!" using the local time of the first upcoming yr.no timeseries entry
+  (within that window) that indicates rain - see fetch.mjs's
+  findRainStart().
 {%- endcomment -%}
 
 <div class="layout layout--col gap--large" style="font-family: 'Inter', sans-serif;">
@@ -55,6 +62,10 @@
   <div class="layout layout--row gap--large" style="justify-content: center;">
     <div class="label">{{ current.condition_text }}</div>
     <div class="label">{{ current.clothing_text }}</div>
+  </div>
+
+  <div class="layout layout--row" style="justify-content: center;">
+    <div class="label">{{ current.rain_forecast_text }}</div>
   </div>
 
   <div class="divider"></div>

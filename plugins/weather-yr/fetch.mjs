@@ -208,6 +208,32 @@ function pickPrecip(entry) {
   );
 }
 
+// --- "when does the rain start" forecast text ------------------------------
+// Scans yr.no's near-term (hourly) timeseries entries for the first one
+// (within the next `windowMinutes`, including right now) where rain is
+// expected, per the same expectsRain() check used for the rain-gear icon.
+// Entries are chronological, so the loop can stop as soon as it passes the
+// window rather than scanning the whole multi-day series.
+function findRainStart(timeseries, nowMs, windowMinutes = 60) {
+  const windowMs = windowMinutes * 60 * 1000;
+  for (const entry of timeseries) {
+    const entryMs = new Date(entry.time).getTime();
+    if (entryMs < nowMs) continue;
+    if (entryMs - nowMs > windowMs) break;
+    if (expectsRain(pickSymbol(entry), pickPrecip(entry))) return entry.time;
+  }
+  return null;
+}
+
+function formatLocalTime(isoTime, timeZone) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(isoTime));
+}
+
 const LIVE_DATA_URL = "https://hikmek.github.io/trmnl_plugins/weather-yr/data.json";
 const MIN_INTERVAL_MINUTES = 25; // target ~30 min; a bit under to absorb GitHub Actions schedule jitter
 
@@ -254,6 +280,11 @@ async function main() {
   const clothing = clothingForTemperature(averagedTemperature);
   const needsRainGear = expectsRain(nowSymbol, nowPrecip);
 
+  const rainStartsAt = findRainStart(timeseries, Date.now(), 60);
+  const rainForecastText = rainStartsAt
+    ? `Det börjar regna kl ${formatLocalTime(rainStartsAt, TIMEZONE)} idag!`
+    : "Inget regn i sikte!";
+
   const current = {
     temperature: averagedTemperature,
     temperature_sources: Object.fromEntries(temperatureReadings.map((r) => [r.source, round1(r.value)])),
@@ -269,6 +300,8 @@ async function main() {
     clothing_text: clothing.text,
     needs_rain_gear: needsRainGear,
     rain_gear_icon_url: `${ICON_BASE_URL}/clothing-umbrella.png`,
+    rain_starts_at: rainStartsAt,
+    rain_forecast_text: rainForecastText,
   };
 
   // --- group entries by local calendar day ---
