@@ -116,15 +116,29 @@ const ICONS = {
 };
 
 async function renderIcon(grid) {
-  const raw = Buffer.alloc(GRID * GRID);
+  // IMPORTANT: build a 3-channel (RGB) raw buffer and let sharp write a
+  // plain 8-bit PNG - do NOT reduce this to a 1-bit/palette PNG (e.g. via
+  // `.png({ palette: true, colors: 2 })`, the previous approach here). That
+  // produced a "1-bit colormap" PNG which TRMNL's rendering pipeline
+  // silently fails to display (the icon just doesn't show up at all - not
+  // even a broken-image glyph). Comparing against plugins/broforce's
+  // portraits, which are plain sharp `.png()` output (8-bit RGB) and DO
+  // render correctly on the same TRMNL account, 8-bit RGB is the known-good
+  // format - see generate-icons.mjs's renderIcon() for the same fix and
+  // fuller explanation.
+  const raw = Buffer.alloc(GRID * GRID * 3);
   for (let r = 0; r < GRID; r++) {
     for (let c = 0; c < GRID; c++) {
-      raw[r * GRID + c] = grid[r][c] ? 0 : 255;
+      const v = grid[r][c] ? 0 : 255;
+      const i = (r * GRID + c) * 3;
+      raw[i] = v;
+      raw[i + 1] = v;
+      raw[i + 2] = v;
     }
   }
-  return sharp(raw, { raw: { width: GRID, height: GRID, channels: 1 } })
+  return sharp(raw, { raw: { width: GRID, height: GRID, channels: 3 } })
     .resize({ width: OUTPUT_SIZE, height: OUTPUT_SIZE, kernel: "nearest" })
-    .png({ palette: true, colors: 2, dither: 0 })
+    .png()
     .toBuffer();
 }
 

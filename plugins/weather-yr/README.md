@@ -210,21 +210,35 @@ going forward: in `template.quadrant.liquid`, never put an `<img>` on the
 same row as the temperature value - icons may only share a row with other
 icons (which are narrow enough to fit), never with `value`/text content.
 
-Two things that were tried and did *not* actually fix this bug, kept here
-so they aren't re-tried: (1) removing the custom inline `font-size` in
-favor of a real `value--*` class - still the right thing to do (TRMNL
-renders "value" numbers through its own pixel/bitmap font system tied to
-those specific classes), but not what caused this particular symptom;
-(2) re-encoding the clothing icon PNGs from 1-bit grayscale (`colorType 0`)
-to 1-bit palette/indexed (`colorType 3`) to match the existing weather
-icons - also still worth keeping for consistency (a naive `Pillow` `mode
-"1"` save produces the grayscale variant; `generate-clothing-icons.mjs`'s
-`sharp` output is already palette format; re-encode with
-`Image.open(path).convert("L").convert("P", palette=Image.ADAPTIVE,
-colors=2)` if you ever regenerate them another way, and check with `file
-icons/*.png` for "1-bit colormap" vs "1-bit grayscale") - but this was not
-the cause of the Quadrant bug either, since it persisted unchanged after
-that fix was deployed.
+A different fix that was tried and did *not* actually resolve this
+particular symptom, kept here so it isn't re-tried: removing the custom
+inline `font-size` in favor of a real `value--*` class - still the right
+thing to do (TRMNL renders "value" numbers through its own pixel/bitmap
+font system tied to those specific classes), but not the cause of the
+Quadrant clipping bug.
+
+**All icons invisible in BOTH Full and Quadrant views (the real "1-bit PNG"
+bug)**: separately from the overflow bug above, none of this plugin's
+icons (weather or clothing) ever rendered *at all* - not clipped, not a
+broken-image glyph, just silently absent, in every view, at every size.
+The cause: `generate-icons.mjs` and `generate-clothing-icons.mjs` both
+produced 1-bit indexed/palette PNGs (`sharp`'s `.png({ palette: true,
+colors: 2 })`, `file` reports "1-bit colormap"). An earlier attempt
+mis-diagnosed this as a 1-bit-*grayscale*-vs-1-bit-*palette* mismatch and
+"fixed" it by re-encoding grayscale PNGs to palette format - that didn't
+help, because the real problem is TRMNL's rendering pipeline apparently
+can't display 1-bit PNGs *of either kind*. This was only found by
+comparing against `plugins/broforce`'s portrait images, which use plain
+`sharp().png()` with no palette reduction (`file` reports "8-bit/color
+RGB") and have always rendered correctly on the same TRMNL account -
+proving 8-bit RGB is the actually-required format. Fix: both generator
+scripts now build a 3-channel raw buffer and emit plain 8-bit RGB PNGs
+(no `palette`/`colors` options at all), matching broforce's proven-good
+format; the existing `icons/*.png` files were re-encoded in place the same
+way. If you ever add new icons here, generate them the same way (or run
+`node plugins/weather-yr/generate-icons.mjs` /
+`generate-clothing-icons.mjs`) and double check with `file icons/*.png`
+that they say "8-bit/color RGB", not "1-bit colormap" or "1-bit grayscale".
 
 The icon sizes in both templates are chosen to visually balance against
 `value--xxlarge` / `value--base` (per the repo's own size notes:
