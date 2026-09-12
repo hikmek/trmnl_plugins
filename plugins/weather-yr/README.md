@@ -135,14 +135,23 @@ and its condition symbol (rain/sleet/thunder) - if either indicates rain,
 (`clothing-umbrella.png`) is shown alongside the outfit icon, regardless of
 temperature.
 
-`template.liquid` (Full view) lays these out as weather icon (left) -
-temperature (center) - clothing + rain-gear icons (right), all sized to
-the same explicit pixel height as the temperature text itself (so "bigger
-icon" and "icon matches text size" both hold regardless of TRMNL's own
-`value--*` class sizes). `template.quadrant.liquid` uses the same
-left/center/right idea at a much smaller size, but only shows the outfit
-icon (no separate rain-gear icon - there's only room for one icon on the
-right in that small a pane).
+`template.liquid` (Full view) lays these out as weather icon (left, 96px) -
+temperature (center, `value--xxlarge`) - clothing + rain-gear icons
+(right, 96px). `template.quadrant.liquid` uses the same left/center/right
+idea at a smaller size (36px icons, `value--base`), but only shows the
+outfit icon (no separate rain-gear icon - there's only room for one icon
+on the right in that small a pane).
+
+**Important**: the temperature keeps a real TRMNL `value--*` class rather
+than a custom inline `font-size`. TRMNL renders "value" numbers through
+its own pixel/bitmap font system tied to those specific classes - an
+arbitrary font-size outside that set was tried first to force an exact
+icon/text height match, but it corrupted the digits *and* broke the
+neighboring icons' rendering (a whole-row artifact, not just a text one).
+The icon sizes above are just chosen to visually balance against
+`value--xxlarge` / `value--base` (per the repo's own size notes:
+`value--large` ≈ 58px, `value--xlarge` ≈ 74px) rather than an exact
+pixel-for-pixel match with the text.
 
 To tweak the clothing shapes, edit `generate-clothing-icons.mjs` and
 re-run:
