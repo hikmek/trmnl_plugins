@@ -14,10 +14,12 @@ preferring Lunch when both exist (Full view shows both side by side;
 Quadrant only has room for one).
 
 Weekend note: skolmat never has data on Lördag/Söndag, so on weekends
-this pane shows the hemmamat (home food) dish instead of the generic
-"HELG !!" text - more useful in this small a space than a message
-that's just explaining an absence. Full view still shows both
-"Skolmatn:"/"Hemmamatn:" sections stacked; there's only room for one here.
+this pane shows the hemmamat (home food) dish for whichever of the two
+today actually is, instead of the generic "HELGn" text - more useful in
+this small a space than a message that's just explaining an absence.
+Full view shows the full 3-column layout (Skolmatn/Hemmamatn/Dagens
+kockn, with hemmamat's Lördag AND Söndag both shown every day); there's
+only room for one lunch-side item here, so it stays "today only".
 
 "Dagens kock" (right column): unrelated in content to the lunch data -
 it's today's random pick from the broforce plugin's own portrait roster
@@ -37,9 +39,15 @@ no description - description is only shown in broforce's own Full view).
     <div class="label">Dagens Gröna</div>
     <div class="value value--small" style="text-align: center;">{{ today.vegetarian | truncate: 40 }}</div>
     <img class="image" src="{{ today.vegetarian_icon_url }}" width="32" height="32" style="width: 32px; height: 32px;">
-    {% elsif today.hemmamat %}
+    {% elsif today.is_weekend %}
     <div class="label">Hemmamat {{ today.weekday }}</div>
-    <div class="value value--small" style="text-align: center;">{{ today.hemmamat.lunch | truncate: 40 }}</div>
+    {% if today.hemmamat and today.weekday == "Lördag" %}
+    <div class="value value--small" style="text-align: center;">{{ today.hemmamat.lordag.lunch | truncate: 40 }}</div>
+    {% elsif today.hemmamat %}
+    <div class="value value--small" style="text-align: center;">{{ today.hemmamat.sondag.lunch | truncate: 40 }}</div>
+    {% else %}
+    <div class="value">{{ today.note }}</div>
+    {% endif %}
     {% elsif today.note %}
     <div class="label">{{ today.weekday }}</div>
     <div class="value">{{ today.note }}</div>
