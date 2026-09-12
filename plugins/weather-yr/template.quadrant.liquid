@@ -22,23 +22,29 @@
   temperature value; icons only ever share a row with OTHER icons (narrow),
   never with value/text content.
 
-  Layout: weather icon, then (if there's a clothing/rain icon to show) a
-  small icon-only row, then the temperature alone, then text labels below.
-  The temperature keeps a real TRMNL value--* class (value--base) rather
-  than a custom inline font-size - an arbitrary font-size outside TRMNL's
-  own pixel/bitmap-font size set corrupted the digits in earlier testing.
+  Layout: weather icon + clothing/rain icon(s) together in one icon-only
+  row on top (sized big enough to actually read at a glance - 44px, up
+  from an earlier too-small 28px that made them hard to tell apart), then
+  the temperature alone on its own row, then text labels below. The
+  temperature keeps a real TRMNL value--* class (value--base) rather than
+  a custom inline font-size - an arbitrary font-size outside TRMNL's own
+  pixel/bitmap-font size set corrupted the digits in earlier testing.
+  44px x up to 3 icons + gaps is still comfortably narrower than the
+  "H xx.x / L xx.x" text row below, which has always rendered fine, so
+  this shouldn't reintroduce the row-overflow issue described above.
 
-  Rain forecast text: current.rain_forecast_text ("Inget regn i sikte!" or
-  "Det börjar regna kl HH:MM idag!" - see fetch.mjs's findRainStart()),
-  centered below everything else.
+  Rain forecast text: current.rain_forecast_text ("Inget regn i sikte
+  närmaste 60 min!", "Det börjar regna kl HH:MM idag!", or a "Lätt regn kl
+  HH:MM-HH:MM" range while it's already raining - see fetch.mjs), centered
+  below everything else.
 {%- endcomment -%}
 
-<div class="layout layout--col layout--center gap--xsmall" style="font-family: 'Inter', sans-serif;">
-  <div class="layout layout--row layout--center-y gap--xsmall">
-    <img class="image" src="{{ current.icon_url }}" width="28" height="28" style="width: 28px; height: 28px;">
-    <img class="image" src="{{ current.clothing_icon_url }}" width="28" height="28" style="width: 28px; height: 28px;">
+<div class="layout layout--col layout--center gap--small" style="font-family: 'Inter', sans-serif;">
+  <div class="layout layout--row layout--center-y gap--small">
+    <img class="image" src="{{ current.icon_url }}" width="44" height="44" style="width: 44px; height: 44px;">
+    <img class="image" src="{{ current.clothing_icon_url }}" width="44" height="44" style="width: 44px; height: 44px;">
     {% if current.needs_rain_gear %}
-    <img class="image" src="{{ current.rain_gear_icon_url }}" width="28" height="28" style="width: 28px; height: 28px;">
+    <img class="image" src="{{ current.rain_gear_icon_url }}" width="44" height="44" style="width: 44px; height: 44px;">
     {% endif %}
   </div>
   <div class="value value--base">{{ current.temperature }}°</div>
