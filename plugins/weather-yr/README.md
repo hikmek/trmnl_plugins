@@ -252,6 +252,20 @@ to today's date outside CI) so the URL itself changes whenever the icon
 files might have, forcing a fresh fetch instead of serving a stale cached
 copy.
 
+**Missing `image--contain image-dither` classes**: even with correct 8-bit
+PNGs and cache-busted URLs, weather-yr's icons kept rendering as a generic
+placeholder glyph (a small blob, the same shape regardless of which icon
+file was actually requested) in every view. Both templates' `<img>` tags
+only ever used `class="image"`. Comparing against `plugins/broforce`,
+whose custom-generated portrait images are the one confirmed-working
+example of this pattern on the same TRMNL account, its `<img>` tags use
+`class="image image--contain image-dither"` - TRMNL's framework docs
+describe `image-dither` as "essential" for images on 1-bit e-ink displays,
+and `image--contain` as the aspect-ratio-preserving sizing mode. Both
+weather-yr templates now use the same three classes on every icon `<img>`.
+If you add a new icon `<img>` anywhere in this plugin, always include all
+three classes, not just `image`.
+
 The icon sizes in both templates are chosen to visually balance against
 `value--xxlarge` / `value--base` (per the repo's own size notes:
 `value--large` ≈ 58px, `value--xlarge` ≈ 74px) rather than an exact
