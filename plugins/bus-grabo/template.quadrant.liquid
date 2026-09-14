@@ -1,21 +1,26 @@
 {%- comment -%}
   Paste this into the "Quadrant" tab of the bus-grabo plugin's Edit Markup
   screen (separate from the "Full" tab's template.liquid). Compact version
-  for small Mashup panes: the two boards' ETD + next-departure time, each
-  with its own small pixel-art icon (icon_url - see fetch.mjs's
-  pickTwoDistinctIcons()). No separate map image and no "senast sedd"
-  section here (a Quadrant pane is too narrow/short for those - they stay on
-  the Full view only).
+  for small Mashup panes: each board's icon + ETD + next-departure time,
+  plus a one-line "senast sedd" (last seen) row - always populated once any
+  GPS sighting has ever been recorded, see fetch.mjs's buildLastSeen(). No
+  separate map image here (a Quadrant pane is too narrow for the 480px-wide
+  position map to be legible - that stays on the Full view only).
 
-  Same rule as template.liquid: every line uses "label" so size/font stays
-  identical and pixelated throughout, and each icon <img> is a single LONE
-  <img> in its own row - never a flex sibling of another <img>.
+  Same rules as template.liquid: every text line uses "label" so size/font
+  stays identical and pixelated throughout; each icon <img> is a single LONE
+  <img> in its own row - never a flex sibling of another <img>; and each
+  icon <img> sits inside its own single-cell <table><td> (not a bare
+  <div class="layout layout--row">) - a bare flex-row wrapper let the
+  surrounding layout stretch the icon into a tall narrow sliver instead of
+  its real landscape shape on a real device, table cells don't have that
+  problem (see template.liquid's comment for the fuller explanation).
 {%- endcomment -%}
 
 <div class="layout layout--col gap--small">
-  <div class="layout layout--row">
-    <img class="image image--contain image-dither" src="{{ mjorn_to_grabo.icon_url }}" width="64" height="32" style="width: 64px; height: 32px;">
-  </div>
+  <table style="width: 100%; border-collapse: collapse;">
+    <tr><td style="border: none; padding: 0; text-align: center;"><img class="image image--contain image-dither" src="{{ mjorn_to_grabo.icon_url }}" width="64" height="32" style="width: 64px; height: 32px;"></td></tr>
+  </table>
   <div class="label">MJÖRN &gt; GRÅBO</div>
   {% if mjorn_to_grabo.has_departure %}
   <div class="label">ETD: {{ mjorn_to_grabo.estimated_time }}{% if mjorn_to_grabo.delay_minutes > 0 %} (+{{ mjorn_to_grabo.delay_minutes }}){% endif %}</div>
@@ -25,10 +30,11 @@
   {% else %}
   <div class="label">Ingen avgång</div>
   {% endif %}
+  <div class="label">Senast sedd: {{ mjorn_to_grabo.last_seen.location_text }} ({{ mjorn_to_grabo.last_seen.seen_at_display }})</div>
 
-  <div class="layout layout--row">
-    <img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="64" height="32" style="width: 64px; height: 32px;">
-  </div>
+  <table style="width: 100%; border-collapse: collapse;">
+    <tr><td style="border: none; padding: 0; text-align: center;"><img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="64" height="32" style="width: 64px; height: 32px;"></td></tr>
+  </table>
   <div class="label">GRÅBO &gt; GÖTEBORG</div>
   {% if grabo_to_goteborg.has_departure %}
   <div class="label">ETD: {{ grabo_to_goteborg.estimated_time }}{% if grabo_to_goteborg.delay_minutes > 0 %} (+{{ grabo_to_goteborg.delay_minutes }}){% endif %}</div>
@@ -38,6 +44,7 @@
   {% else %}
   <div class="label">Ingen avgång</div>
   {% endif %}
+  <div class="label">Senast sedd: {{ grabo_to_goteborg.last_seen.location_text }} ({{ grabo_to_goteborg.last_seen.seen_at_display }})</div>
 </div>
 
 <div class="title_bar">

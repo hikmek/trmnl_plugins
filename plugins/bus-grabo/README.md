@@ -255,22 +255,37 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
   real-time accuracy)
 - Markup (Full tab): paste `template.liquid`
 - Markup (Quadrant tab): paste `template.quadrant.liquid` - includes each
-  board's icon + ETD + next-departure line too (no map image or "senast
-  sedd" section - too tall/narrow for a Quadrant pane), not just the Full
+  board's icon + ETD + next-departure line, and a compact "senast sedd"
+  line too (no map image - too wide for a Quadrant pane), not just the Full
   view
 
-## Markup style: plain lines, not a table
+## Markup style: plain lines, not a table (except for icons)
 
-Both templates deliberately avoid TRMNL's `table` component and use one
+Both templates avoid TRMNL's `table` component for text and use one
 `<div class="label">` per line instead - for headers and countdowns alike.
 TRMNL maps the "label" component to a single pixel font (NicoClean /
 TRMNL16, whichever bundle is active) at one fixed size on real e-ink
 devices, so reusing it everywhere guarantees identical, pixelated text
 throughout instead of mixing table header/cell fonts with value fonts of
-different sizes. The one exception is the position-map `<img>` in
-`template.liquid`, which per weather-yr's hard-won lesson (see that
-plugin's README) must be a single lone `<img>` - never a flex sibling of
-another `<img>` - so it gets its own row, separate from the text rows.
+different sizes.
+
+**Every `<img>` is the deliberate exception**, and needs two rules learned
+the hard way (both originally from weather-yr, the second one specific to
+this plugin):
+
+1. Each icon is a single **lone** `<img>` - never placed as a flex sibling
+   of another `<img>` in the same row.
+2. Each icon's `<img>` sits inside its own **single-cell `<table><td>`**,
+   not a bare `<div class="layout layout--row">`. The bus icons originally
+   used a bare flex-row `<div>` wrapper and rendered squashed into a tall
+   narrow sliver on a real device instead of their real landscape shape -
+   the surrounding flex layout was stretching the wrapper's cross-axis
+   instead of respecting the `<img>`'s own `width`/`height`. A `<table><td>`
+   cell sizes to its content regardless of the surrounding flex layout
+   (this is exactly why weather-yr's icons - which predate this plugin's
+   bug - were already inside table cells), so every icon here (position
+   map, per-board bus icon, per-board "senast sedd" icon) uses that same
+   wrapper now.
 
 ## Data schema (`data.json`)
 
