@@ -2,11 +2,16 @@
   Paste this into the TRMNL Private Plugin "Markup" editor for the
   bus-grabo plugin (Polling strategy), "Full" tab.
 
-  Two single-line "next bus" countdowns (not a multi-departure list - see
-  fetch.mjs's nextDeparture()): line 525 at Mjörn (towards Gråbo) and line
+  Two single-line "next bus" boards (not a multi-departure list - see
+  fetch.mjs's nextDepartures()): line 525 at Mjörn (towards Gråbo) and line
   X3 at Gråbo busstation (towards Göteborg) - two DIFFERENT lines/buses
   that happen to meet at Gråbo, not one continuous route (see fetch.mjs's
-  top-of-file "LINE CORRECTION" note for why this matters).
+  top-of-file "LINE CORRECTION" note for why this matters). Each board shows
+  a random pixel-art bus icon (icon_url, re-picked every fetch, the two
+  boards' icons guaranteed different from each other - see fetch.mjs's
+  pickTwoDistinctIcons()), the ETD (immediate next departure) and the
+  following scheduled departure time (next_departure_time - both lines run
+  roughly hourly, so this is typically "this hour" / "next hour").
 
   Every text line uses "label" so size/font stays identical and pixelated
   throughout (see README's "Markup style" section) - matches the previous
@@ -15,17 +20,20 @@
   Position map: a single generated PNG (bus_position.map_image_url) showing
   Sjövik -- Mjörn -- Gråbo as three dots on a line, with a marker for each
   departure's live GPS-derived position along that stretch (see fetch.mjs's
-  renderPositionMap()/resolveRoute()/describeDeparturePosition()). Rules
-  learned the hard way in weather-yr apply here too: this <img> uses
-  class="image image--contain image-dither" (not just "image"), and it is
-  a single LONE <img> - never placed as a flex sibling of another <img> -
-  so it gets its own row.
+  renderPositionMap()/resolveRoute()/describeDeparturePosition()).
 
-  Bus name + live location for each departure are shown at the bottom
-  (mjorn_to_grabo.bus_name/bus_location, grabo_to_goteborg.bus_name/
-  bus_location) - these come from matching the departure to a live GPS fix
-  by detailsReference; see fetch.mjs's describeDeparturePosition() for what
-  each possible bus_location string means (unknown/off-route/etc).
+  IMPORTANT rendering rule (learned the hard way in weather-yr, applies to
+  every <img> below): class="image image--contain image-dither" (not just
+  "image"), and each icon is a single LONE <img> in its own row - never
+  placed as a flex sibling of another <img>.
+
+  Bottom section: "denna buss sågs senast vid" (last seen) - one row per
+  board, each repeating that board's own icon plus the most recent GPS
+  sighting we have for that bus and when it was seen (mjorn_to_grabo.
+  last_seen / grabo_to_goteborg.last_seen). Unlike bus_location above (which
+  is often "unknown" between trips), last_seen is designed to always have
+  something to show once any sighting has ever been recorded - see
+  fetch.mjs's buildLastSeen().
 {%- endcomment -%}
 
 <div class="layout layout--col gap--medium">
@@ -42,31 +50,49 @@
 
   <div class="divider"></div>
 
-  <div class="label">{{ mjorn_to_grabo.label }}:</div>
+  <div class="layout layout--row">
+    <img class="image image--contain image-dither" src="{{ mjorn_to_grabo.icon_url }}" width="96" height="48" style="width: 96px; height: 48px;">
+  </div>
+  <div class="label">MJÖRN &gt; GRÅBO</div>
   {% if mjorn_to_grabo.has_departure %}
-  <div class="label">{{ mjorn_to_grabo.minutes_until }} min ({{ mjorn_to_grabo.estimated_time }}){% if mjorn_to_grabo.delay_minutes > 0 %} (+{{ mjorn_to_grabo.delay_minutes }}){% endif %}{% if mjorn_to_grabo.is_cancelled %} - INSTÄLLD{% endif %}</div>
+  <div class="label">ETD: {{ mjorn_to_grabo.estimated_time }}{% if mjorn_to_grabo.delay_minutes > 0 %} (+{{ mjorn_to_grabo.delay_minutes }}){% endif %}{% if mjorn_to_grabo.is_cancelled %} - INSTÄLLD{% endif %} ({{ mjorn_to_grabo.minutes_until }} min)</div>
+  {% if mjorn_to_grabo.next_departure_time %}
+  <div class="label">Nästa: {{ mjorn_to_grabo.next_departure_time }}</div>
+  {% endif %}
   {% else %}
   <div class="label">Ingen avgång just nu</div>
   {% endif %}
 
   <div class="divider"></div>
 
-  <div class="label">{{ grabo_to_goteborg.label }}:</div>
+  <div class="layout layout--row">
+    <img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="96" height="48" style="width: 96px; height: 48px;">
+  </div>
+  <div class="label">GRÅBO &gt; GBG</div>
   {% if grabo_to_goteborg.has_departure %}
-  <div class="label">{{ grabo_to_goteborg.minutes_until }} min ({{ grabo_to_goteborg.estimated_time }}){% if grabo_to_goteborg.delay_minutes > 0 %} (+{{ grabo_to_goteborg.delay_minutes }}){% endif %}{% if grabo_to_goteborg.is_cancelled %} - INSTÄLLD{% endif %}</div>
+  <div class="label">ETD: {{ grabo_to_goteborg.estimated_time }}{% if grabo_to_goteborg.delay_minutes > 0 %} (+{{ grabo_to_goteborg.delay_minutes }}){% endif %}{% if grabo_to_goteborg.is_cancelled %} - INSTÄLLD{% endif %} ({{ grabo_to_goteborg.minutes_until }} min)</div>
+  {% if grabo_to_goteborg.next_departure_time %}
+  <div class="label">Nästa: {{ grabo_to_goteborg.next_departure_time }}</div>
+  {% endif %}
   {% else %}
   <div class="label">Ingen avgång just nu</div>
   {% endif %}
 
   <div class="divider"></div>
 
-  <div class="label">BUSSINFO</div>
-  {% if mjorn_to_grabo.has_departure %}
-  <div class="label">Mjörn: {{ mjorn_to_grabo.bus_name | default: mjorn_to_grabo.line }} - {{ mjorn_to_grabo.bus_location }}</div>
-  {% endif %}
-  {% if grabo_to_goteborg.has_departure %}
-  <div class="label">Gråbo: {{ grabo_to_goteborg.bus_name | default: grabo_to_goteborg.line }} - {{ grabo_to_goteborg.bus_location }}</div>
-  {% endif %}
+  <div class="label">SENAST SEDD</div>
+
+  <div class="layout layout--row">
+    <img class="image image--contain image-dither" src="{{ mjorn_to_grabo.icon_url }}" width="64" height="32" style="width: 64px; height: 32px;">
+  </div>
+  <div class="label">MJÖRN &gt; GRÅBO ({{ mjorn_to_grabo.last_seen.bus_name | default: mjorn_to_grabo.line }})</div>
+  <div class="label">Denna buss sågs senast vid: {{ mjorn_to_grabo.last_seen.location_text }} - {{ mjorn_to_grabo.last_seen.seen_at_display }}</div>
+
+  <div class="layout layout--row">
+    <img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="64" height="32" style="width: 64px; height: 32px;">
+  </div>
+  <div class="label">GRÅBO &gt; GBG ({{ grabo_to_goteborg.last_seen.bus_name | default: grabo_to_goteborg.line }})</div>
+  <div class="label">Denna buss sågs senast vid: {{ grabo_to_goteborg.last_seen.location_text }} - {{ grabo_to_goteborg.last_seen.seen_at_display }}</div>
 
 </div>
 

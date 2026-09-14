@@ -108,6 +108,41 @@ const MAP_IMAGE_FILENAME = "position-map.png";
 const MAP_IMAGE_PATH = path.join(OUTPUT_DIR, MAP_IMAGE_FILENAME);
 const MAP_IMAGE_PUBLIC_URL = `https://hikmek.github.io/trmnl_plugins/bus-grabo/${MAP_IMAGE_FILENAME}`;
 
+// --- Pixel-art bus icons ---
+//
+// 30 pre-generated vintage-styled silhouettes (see generate-bus-icons.mjs -
+// this list must match its BUS_VARIANTS keys exactly, since the filenames
+// are derived from them: icons/bus-<name>.png). One is picked at random for
+// each board on every fetch (guaranteed different from each other so the
+// two boards never show the same icon), same rotation idea as banksy's
+// gallery pick. Same cache-busting convention as weather-yr's ICON_VERSION.
+const ICON_BASE_URL = "https://hikmek.github.io/trmnl_plugins/bus-grabo/icons";
+const ICON_VERSION = (process.env.GITHUB_SHA || new Date().toISOString().slice(0, 10)).slice(0, 8);
+const BUS_ICON_NAMES = [
+  "brobacka-1930", "sjovik-1930", "gothenburg-1930", "chicago-1930", "london-1930",
+  "paris-1930", "berlin-1930",
+  "lerum-1950", "grabo-1950", "london-1950", "moscow-1950", "tokyo-1950",
+  "havana-1950", "rio-1950", "cairo-1950", "mumbai-1950", "sydney-1950",
+  "gothenburg-1960", "stockholm-1960", "wolfsburg-1960", "detroit-1960", "new-york-1960",
+  "amsterdam-1960", "oslo-1960", "helsinki-1960", "seoul-1960", "nairobi-1960",
+  "lagos-1960", "mexico-city-1960", "grabo-express-1960",
+];
+
+function busIconUrl(name) {
+  return `${ICON_BASE_URL}/bus-${name}.png?v=${ICON_VERSION}`;
+}
+
+// Picks 2 names from BUS_ICON_NAMES, guaranteed distinct from each other -
+// [mjornIconName, graboIconName].
+function pickTwoDistinctIcons() {
+  const a = BUS_ICON_NAMES[Math.floor(Math.random() * BUS_ICON_NAMES.length)];
+  let b = a;
+  while (b === a) {
+    b = BUS_ICON_NAMES[Math.floor(Math.random() * BUS_ICON_NAMES.length)];
+  }
+  return [a, b];
+}
+
 async function getAccessToken() {
   const authKey = process.env.VASTTRAFIK_AUTH_KEY;
   if (!authKey) {
@@ -187,6 +222,20 @@ function hhmm(iso) {
   }).format(new Date(iso));
 }
 
+// "9 sep 22:57" - used for the "senast sedd" (last seen) timestamp, which
+// (unlike a scheduled departure time) could in principle be from an earlier
+// day if a bus hasn't reported a fresh GPS fix in a while, so the date is
+// worth keeping visible rather than just the time.
+function dateAndTime(iso) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Stockholm",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
 function formatDeparture(raw, nowMs) {
   const planned = raw.plannedTime;
   const estimated = raw.estimatedTime || raw.plannedTime;
@@ -219,15 +268,23 @@ function isTowardsGrabo(raw) {
   return !AWAY_FROM_GRABO_DESTINATIONS.some((away) => dest.includes(away));
 }
 
-function nextDeparture(rawDepartures, nowMs, { line, requireTowardsGrabo }) {
-  return (
-    rawDepartures
-      .filter((d) => d.serviceJourney?.line?.shortName === line)
-      .filter((d) => !requireTowardsGrabo || isTowardsGrabo(d))
-      .map((d) => formatDeparture(d, nowMs))
-      .filter((d) => d.minutes_until >= 0)
-      .sort((a, b) => a.minutes_until - b.minutes_until)[0] ?? null
-  );
+// Returns up to `count` upcoming matches, soonest first - used to show both
+// the immediate ETD and the following scheduled departure (the two boards
+// run roughly hourly, so [0] and [1] are typically "this hour" / "next
+// hour"). nextDeparture() below is the old single-result shape, kept as a
+// thin wrapper since most callers only need the next one.
+function nextDepartures(rawDepartures, nowMs, { line, requireTowardsGrabo }, count = 1) {
+  return rawDepartures
+    .filter((d) => d.serviceJourney?.line?.shortName === line)
+    .filter((d) => !requireTowardsGrabo || isTowardsGrabo(d))
+    .map((d) => formatDeparture(d, nowMs))
+    .filter((d) => d.minutes_until >= 0)
+    .sort((a, b) => a.minutes_until - b.minutes_until)
+    .slice(0, count);
+}
+
+function nextDeparture(rawDepartures, nowMs, opts) {
+  return nextDepartures(rawDepartures, nowMs, opts, 1)[0] ?? null;
 }
 
 // Diagnostic: every raw departure at a stop (any line, unfiltered by
@@ -389,6 +446,57 @@ function describeDeparturePosition(route, departure) {
   return { bus_name: busName, location_text, progress };
 }
 
+// --- "Last seen" position (bottom-of-board section) ---
+//
+// The board above only shows a position when it can match the very NEXT
+// scheduled departure to a live GPS fix right now (describeDeparturePosition
+// above) - which is often null (bus not out yet, or between trips). The
+// user wants a "denna buss sågs senast vid: <position> <time>" line that is
+// ALWAYS populated, so this persists the most recent real sighting across
+// fetches: reuses the same (already GPS-matched) result whenever this run
+// found one, and otherwise carries forward whatever was published last time
+// (fetched via fetchPreviousData() below) rather than going blank. Once a
+// single sighting has ever been recorded, this field never reverts to
+// "unknown" again - only ever replaced by a newer sighting.
+//
+// Deliberately reuses describeDeparturePosition()'s result rather than a
+// second, separately-unverified way of picking "the" bus for a line out of
+// the raw /positions array - see that function's comment for the
+// detailsReference-matching caveat, which applies here too.
+function buildLastSeen(positionResult, previousLastSeen, nowIso) {
+  if (positionResult && positionResult.bus_name) {
+    return {
+      bus_name: positionResult.bus_name,
+      location_text: positionResult.location_text,
+      seen_at: nowIso,
+      seen_at_display: dateAndTime(nowIso),
+    };
+  }
+  if (previousLastSeen && previousLastSeen.seen_at) {
+    return previousLastSeen; // carry forward unchanged - still the most recent real sighting we have
+  }
+  return {
+    bus_name: null,
+    location_text: "Ingen position registrerad ännu.",
+    seen_at: null,
+    seen_at_display: "–",
+  };
+}
+
+// Best-effort fetch of the currently-published data.json, used only to seed
+// buildLastSeen()'s "carry forward" case above. Returns null on any failure
+// (network error, first-ever deploy with nothing published yet, etc.) -
+// buildLastSeen() already handles a null previous value gracefully.
+async function fetchPreviousData(url) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 // --- Position-map PNG rendering ---
 //
 // IMPORTANT: plain 8-bit RGB output via a raw pixel buffer, same as
@@ -480,16 +588,31 @@ async function main() {
 
   const token = await getAccessToken();
   const nowMs = Date.now();
+  const nowIso = new Date(nowMs).toISOString();
+
+  // Fetched once up front, used only to seed the "last seen" carry-forward
+  // logic (buildLastSeen()) - a network failure here just means the
+  // last-seen fields fall back to "no previous sighting" for this run
+  // rather than crashing the whole fetch.
+  const previousData = await fetchPreviousData(LIVE_DATA_URL);
 
   const [mjornRaw, graboRaw] = await Promise.all([
     getDepartures(token, MJORN_GID, MJORN_QUERY_LIMIT),
     getDepartures(token, GRABO_GID, GRABO_QUERY_LIMIT),
   ]);
 
-  const mjornNext = nextDeparture(mjornRaw, nowMs, { line: MJORN_LINE, requireTowardsGrabo: true });
-  const graboNext = nextDeparture(graboRaw, nowMs, { line: GRABO_LINE, requireTowardsGrabo: false });
+  // [0] = ETD (the immediate next departure), [1] = the following scheduled
+  // departure - both boards run roughly hourly, so this is "this hour" /
+  // "next hour" in practice (see the user's requested ETD + next-departure
+  // display format).
+  const mjornUpcoming = nextDepartures(mjornRaw, nowMs, { line: MJORN_LINE, requireTowardsGrabo: true }, 2);
+  const graboUpcoming = nextDepartures(graboRaw, nowMs, { line: GRABO_LINE, requireTowardsGrabo: false }, 2);
+  const mjornNext = mjornUpcoming[0] ?? null;
+  const graboNext = graboUpcoming[0] ?? null;
   const debugMjorn = debugRawDepartures(mjornRaw, nowMs);
   const debugGrabo = debugRawDepartures(graboRaw, nowMs);
+
+  const [mjornIcon, graboIcon] = pickTwoDistinctIcons();
 
   // Route + live positions: resolved once, then matched per-departure below.
   // Wrapped here (not inside resolveRoute itself) so a failure still lets us
@@ -506,6 +629,9 @@ async function main() {
   const mjornPosition = describeDeparturePosition(route, mjornNext);
   const graboPosition = describeDeparturePosition(route, graboNext);
 
+  const mjornLastSeen = buildLastSeen(mjornPosition, previousData?.mjorn_to_grabo?.last_seen, nowIso);
+  const graboLastSeen = buildLastSeen(graboPosition, previousData?.grabo_to_goteborg?.last_seen, nowIso);
+
   const mapPng = await renderPositionMap({
     mjornFraction,
     busFractions: [mjornPosition?.progress ?? null, graboPosition?.progress ?? null],
@@ -521,28 +647,39 @@ async function main() {
       label: "Nästa buss från Mjörn mot Gråbo kommer om",
       stop_name: "Mjörn, Lerum",
       line: MJORN_LINE,
+      icon_url: busIconUrl(mjornIcon),
       has_departure: !!mjornNext,
       minutes_until: mjornNext?.minutes_until ?? null,
       estimated_time: mjornNext?.estimated_time ?? null,
+      // The following scheduled departure after the ETD above (both boards
+      // run roughly hourly - see nextDepartures()). null if there isn't a
+      // second one in the fetched window.
+      next_departure_time: mjornUpcoming[1]?.estimated_time ?? null,
       delay_minutes: mjornNext?.delay_minutes ?? 0,
       is_cancelled: mjornNext?.is_cancelled ?? false,
       destination: mjornNext?.destination ?? null,
       bus_name: mjornPosition?.bus_name ?? null,
       bus_location: mjornNext ? mjornPosition?.location_text ?? "Position okänd." : null,
+      // Always populated once any sighting has ever been made - see
+      // buildLastSeen(). Bottom-of-board "denna buss sågs senast vid" line.
+      last_seen: mjornLastSeen,
     },
     grabo_to_goteborg: {
       label: "Nästa buss från Gråbo busshållplats mot Göteborg kommer om",
       stop_name: "Mjörnbotorget (Gråbo busstation)",
       line: GRABO_LINE,
       via_note: "Line X3 stops at Polhemsplatsen, Göteborg (~10 min walk to Nils Ericson Terminalen)",
+      icon_url: busIconUrl(graboIcon),
       has_departure: !!graboNext,
       minutes_until: graboNext?.minutes_until ?? null,
       estimated_time: graboNext?.estimated_time ?? null,
+      next_departure_time: graboUpcoming[1]?.estimated_time ?? null,
       delay_minutes: graboNext?.delay_minutes ?? 0,
       is_cancelled: graboNext?.is_cancelled ?? false,
       destination: graboNext?.destination ?? null,
       bus_name: graboPosition?.bus_name ?? null,
       bus_location: graboNext ? graboPosition?.location_text ?? "Position okänd." : null,
+      last_seen: graboLastSeen,
     },
     bus_position: {
       available: !!(mjornPosition?.progress != null || graboPosition?.progress != null),

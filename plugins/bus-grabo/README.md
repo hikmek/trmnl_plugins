@@ -15,6 +15,15 @@ TRMNL private plugin (Polling strategy) showing:
    using real GPS (see below). The two boards are **not the same physical
    bus** - line 525 terminates in Lerum and line X3 starts fresh at Gråbo,
    they only meet at the Gråbo stop where a rider would change buses.
+4. **A pixel-art bus icon per board** (picked at random every fetch from 30
+   pre-generated vintage-styled silhouettes, guaranteed different between
+   the two boards) next to an **ETD + next departure** line (both lines run
+   roughly hourly, so this is typically "this hour" / "next hour" - see
+   "Pixel-art bus icons" below).
+5. **"Denna buss sågs senast vid" (last seen)** - one line per board at the
+   bottom, always showing the most recent real GPS sighting of that bus and
+   when it was seen, even when the board above currently shows "position
+   unknown" between trips (see "Last seen position" below).
 
 - Data source: [Västtrafik "Planera Resa" API v4](https://developer.vasttrafik.se/)
 - Requires a **free** Västtrafik developer account + API credentials
@@ -126,6 +135,64 @@ resolved to coordinates automatically via `/locations/by-text` - no manual
 lat/long lookup needed) and `renderPositionMap()`'s marker loop extends to
 plot all of them.
 
+## Pixel-art bus icons
+
+`plugins/bus-grabo/icons/bus-<name>.png` holds 30 pre-generated pixel-art
+bus silhouettes spanning a 1930s/1950s/1960s stylistic range (hooded-nose
+"coach" look, flat-nose mid-century look, double-deckers, etc), each given a
+world-city + decade flavored name (e.g. `bus-london-1930.png`,
+`bus-tokyo-1950.png`, `bus-detroit-1960.png`). **These are stylized
+silhouettes, not reproductions of specific real vehicles or claims about
+that city's actual historical fleet** - at e-ink pixel-art resolution
+there's no meaningful visual difference between "a generic 1950s coach" and
+any specific real model, so the names are just flavor for an otherwise
+procedurally-varied shape (deck count, nose style, roof style, window
+count, roof vent, side stripe, open rear platform).
+
+`fetch.mjs`'s `pickTwoDistinctIcons()` picks 2 of the 30 at random on every
+fetch - one per board (`mjorn_to_grabo.icon_url` / `grabo_to_goteborg.
+icon_url`) - guaranteed different from each other so the two boards never
+show the same bus. Same rotation idea as the banksy plugin's gallery pick,
+and the same cache-busting `?v=` convention as weather-yr's icons.
+
+**How the files were generated:** the canonical generator is
+`generate-bus-icons.mjs` (same convention as weather-yr's
+`generate-icons.mjs` - a 32x16 boolean grid, nearest-neighbor upscaled,
+rendered as a plain 8-bit RGB PNG via `sharp`, run with `node
+plugins/bus-grabo/generate-bus-icons.mjs` whenever the `BUS_VARIANTS` table
+in that file changes). The 30 files currently committed under `icons/` were
+produced from an equivalent Python/PIL port of that exact algorithm instead
+(the sandbox this was built in can't install `sharp` - the npm registry
+returns 403 there), which outputs byte-for-byte the same plain-RGB PNG
+shape; `generate-bus-icons.mjs` remains the source of truth for the shape
+definitions and is what regenerates them if the variant table is ever
+edited by someone who can run Node+`sharp` (locally, or via the workflow's
+own `npm ci`).
+
+## Last seen position ("denna buss sågs senast vid")
+
+`bus_location` (the field the board itself shows) is often "unknown" -
+it's only populated when the *very next scheduled departure* happens to
+match a live GPS fix *right now*, which is frequently null between trips.
+The bottom-of-board "senast sedd" line is different: it's designed to
+**always** have something to show once any sighting has ever been made, by
+persisting the most recent real GPS fix across fetches instead of going
+blank the moment the live match disappears.
+
+Mechanism (`buildLastSeen()` in `fetch.mjs`): on every run, if this fetch
+found a live GPS fix for a board's next departure (the same
+`describeDeparturePosition()` result already used for `bus_location` - see
+that function's `detailsReference`-matching caveat below, which applies
+here too), that sighting becomes the new `last_seen` with the current
+timestamp. If not, `fetch.mjs` fetches the currently-published `data.json`
+(`fetchPreviousData()`) and carries its `last_seen` forward unchanged -
+so once a sighting is ever recorded, it only ever gets replaced by a
+*newer* real sighting, never reverts to "unknown". On a brand-new deploy
+with nothing published yet (or if the network fetch of the previous
+`data.json` fails), it falls back to a plain "no sighting yet" message
+rather than crashing - which is the only case where "senast sedd" can show
+nothing meaningful.
+
 ## Debugging "Ingen avgång" (no departure) or a wrong/missing line
 
 If `mjorn_to_grabo.has_departure` (or `grabo_to_goteborg`'s) is `false`, or
@@ -187,9 +254,10 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
   consider lowering the workflow's cron interval too if you want tighter
   real-time accuracy)
 - Markup (Full tab): paste `template.liquid`
-- Markup (Quadrant tab): paste `template.quadrant.liquid` - includes a
-  compact bus-name/position line under each countdown too, not just the
-  Full view
+- Markup (Quadrant tab): paste `template.quadrant.liquid` - includes each
+  board's icon + ETD + next-departure line too (no map image or "senast
+  sedd" section - too tall/narrow for a Quadrant pane), not just the Full
+  view
 
 ## Markup style: plain lines, not a table
 
@@ -215,28 +283,44 @@ another `<img>` - so it gets its own row, separate from the text rows.
     "label": "Nästa buss från Mjörn mot Gråbo kommer om",
     "stop_name": "Mjörn, Lerum",
     "line": "525",
+    "icon_url": "https://hikmek.github.io/trmnl_plugins/bus-grabo/icons/bus-havana-1950.png?v=abcd1234",
     "has_departure": true,
     "minutes_until": 11,
     "estimated_time": "22:27",
+    "next_departure_time": "23:27",          // the following scheduled departure - null if there isn't one in the fetched window
     "delay_minutes": 0,
     "is_cancelled": false,
     "destination": "Lerum",
     "bus_name": "525 mot Lerum",             // from /positions' "name" field, or null if no live fix matched
-    "bus_location": "Mellan Sjövik och Mjörn (31%)"
+    "bus_location": "Mellan Sjövik och Mjörn (31%)",
+    "last_seen": {                           // always populated once any sighting has ever been made - see "Last seen position" below
+      "bus_name": "525 mot Lerum",
+      "location_text": "Mellan Sjövik och Mjörn (31%)",
+      "seen_at": "2026-09-14T20:16:09.528Z", // null only if no sighting has EVER been recorded (e.g. brand-new deploy)
+      "seen_at_display": "14 sep 22:16"
+    }
   },
   "grabo_to_goteborg": {
     "label": "Nästa buss från Gråbo busshållplats mot Göteborg kommer om",
     "stop_name": "Mjörnbotorget (Gråbo busstation)",
     "line": "X3",
     "via_note": "Line X3 stops at Polhemsplatsen, Göteborg (~10 min walk to Nils Ericson Terminalen)",
+    "icon_url": "https://hikmek.github.io/trmnl_plugins/bus-grabo/icons/bus-tokyo-1950.png?v=abcd1234",
     "has_departure": true,
     "minutes_until": 26,
     "estimated_time": "22:42",
+    "next_departure_time": "23:42",
     "delay_minutes": 0,
     "is_cancelled": false,
     "destination": "Särö",
     "bus_name": null,
-    "bus_location": "Position okänd (bussen är inte på väg än)."
+    "bus_location": "Position okänd (bussen är inte på väg än).",
+    "last_seen": {
+      "bus_name": "X3 mot Särö",
+      "location_text": "Utanför Sjövik-Gråbo just nu.",
+      "seen_at": "2026-09-14T19:40:02.101Z",
+      "seen_at_display": "14 sep 21:40"
+    }
   },
   "bus_position": {
     "available": true,          // true if at least one of the two departures above has a live fix
@@ -301,6 +385,19 @@ matching noted above - the script logs the full `data.json` contents,
   GitHub Actions each time, a new token is requested on every run - no
   caching/refresh logic needed.
 - `MJORN_QUERY_LIMIT` / `GRABO_QUERY_LIMIT` (20) control how many raw
-  departures are fetched per stop before filtering down to the single next
-  relevant one - Mjörn especially needs a generous limit since line 525
+  departures are fetched per stop before filtering down to the next
+  relevant one(s) - Mjörn especially needs a generous limit since line 525
   runs both directions through it.
+- **`BUS_ICON_NAMES` in `fetch.mjs` must stay in sync with
+  `BUS_VARIANTS`'s keys in `generate-bus-icons.mjs`** (and with the actual
+  files committed under `icons/`) - it's a separate hardcoded list rather
+  than something computed at fetch time, since `fetch.mjs` doesn't read the
+  filesystem to discover which icons exist. Adding/removing/renaming a
+  variant means updating both files together, or `pickTwoDistinctIcons()`
+  can pick a name with no matching file.
+- **`last_seen`'s carry-forward depends on `fetch.mjs` being able to fetch
+  the currently-published `data.json`** (`fetchPreviousData()`). If that
+  request fails (network issue, or nothing published yet), this run's
+  `last_seen` falls back to "no sighting yet" instead of keeping the
+  previous value - a transient blip here just means one fetch cycle
+  temporarily loses the carried-forward sighting, not a lasting bug.

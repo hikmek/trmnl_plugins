@@ -120,6 +120,11 @@ jobs:
           mkdir -p public/lunch-lerum/icons
           cp plugins/lunch-lerum/icons/*.png public/lunch-lerum/icons/
 
+      - name: Copy bus-grabo static bus icons
+        run: |
+          mkdir -p public/bus-grabo/icons
+          cp plugins/bus-grabo/icons/*.png public/bus-grabo/icons/
+
       - name: Copy broforce static portrait images
         run: |
           mkdir -p public/broforce/portraits
