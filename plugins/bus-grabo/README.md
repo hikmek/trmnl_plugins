@@ -179,19 +179,31 @@ The bottom-of-board "senast sedd" line is different: it's designed to
 persisting the most recent real GPS fix across fetches instead of going
 blank the moment the live match disappears.
 
-Mechanism (`buildLastSeen()` in `fetch.mjs`): on every run, if this fetch
-found a live GPS fix for a board's next departure (the same
-`describeDeparturePosition()` result already used for `bus_location` - see
-that function's `detailsReference`-matching caveat below, which applies
-here too), that sighting becomes the new `last_seen` with the current
-timestamp. If not, `fetch.mjs` fetches the currently-published `data.json`
-(`fetchPreviousData()`) and carries its `last_seen` forward unchanged -
-so once a sighting is ever recorded, it only ever gets replaced by a
-*newer* real sighting, never reverts to "unknown". On a brand-new deploy
-with nothing published yet (or if the network fetch of the previous
-`data.json` fails), it falls back to a plain "no sighting yet" message
-rather than crashing - which is the only case where "senast sedd" can show
-nothing meaningful.
+Mechanism (`buildLastSeen()` in `fetch.mjs`): on every run, `fetch.mjs`
+looks for a sighting of that board's *line* in this priority order:
+
+1. `describeDeparturePosition()`'s result - a live GPS fix matched to the
+   *exact* upcoming scheduled departure by `detailsReference` (see that
+   function's matching caveat below, which applies here too).
+2. If that found nothing, `describeAnyLinePosition()` - **any** live GPS
+   fix for that line, full stop, regardless of direction or route variant
+   (a line 525 bus heading towards Brobacka/Sjövik instead of Gråbo still
+   counts). This exists specifically so "senast sedd" doesn't say "no
+   position" just because the only bus currently visible on that line
+   isn't the one specific trip being counted down - it deliberately does
+   NOT apply to `bus_location` on the board itself, which stays tied to the
+   correct trip.
+3. If *neither* found anything this run, `fetch.mjs` fetches the
+   currently-published `data.json` (`fetchPreviousData()`) and carries its
+   `last_seen` forward unchanged - so once a sighting is ever recorded by
+   either of the above, it only ever gets replaced by a *newer* real
+   sighting, never reverts to "unknown".
+
+Only if none of the three ever produced anything (a brand-new deploy with
+nothing published yet, or the very first fetch after this feature shipped,
+or the previous-`data.json` network fetch failing) does it fall back to a
+plain "no sighting yet" message - the only case where "senast sedd" can
+show nothing meaningful.
 
 ## Debugging "Ingen avgång" (no departure) or a wrong/missing line
 

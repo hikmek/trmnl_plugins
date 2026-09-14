@@ -446,6 +446,65 @@ function describeDeparturePosition(route, departure) {
   return { bus_name: busName, location_text, progress };
 }
 
+// Best-effort extraction of "which line is this GPS fix for" from a
+// /positions result - tried in a few different possible shapes since this
+// is unverified against a live response (see resolveRoute()'s comment).
+function positionLineDesignation(position) {
+  if (!position) return null;
+  if (typeof position.line === "string") return position.line;
+  if (position.line && typeof position.line === "object") {
+    return position.line.shortName ?? position.line.designation ?? position.line.name ?? null;
+  }
+  return null;
+}
+
+// Finds ANY live GPS fix for the given line, regardless of direction/route
+// variant - unlike describeDeparturePosition() above (which requires an
+// exact detailsReference match to one specific scheduled departure), this
+// is used only for the "senast sedd" (last seen) fields, where the user
+// explicitly wants a sighting even of a bus heading the "wrong" way (e.g.
+// line 525 towards Brobacka/Sjövik instead of Gråbo) rather than showing
+// "no position" just because it isn't the exact trip we're counting down.
+function findAnyPositionForLine(positions, line) {
+  return (
+    positions.find((p) => {
+      const designation = positionLineDesignation(p);
+      if (designation != null && String(designation) === line) return true;
+      // Fall back to the free-text name field, in case the line number
+      // only shows up there (e.g. "525 mot Lerum") rather than in a
+      // dedicated line field - same shape-uncertainty caveat as above.
+      return typeof p.name === "string" && new RegExp(`(^|\\D)${line}(\\D|$)`).test(p.name);
+    }) ?? null
+  );
+}
+
+// Same human-status-line logic as describeDeparturePosition(), but keyed by
+// line rather than by one specific departure - see findAnyPositionForLine().
+function describeAnyLinePosition(route, line) {
+  if (!route) return null;
+  const position = findAnyPositionForLine(route.positions, line);
+  if (!position || typeof position.latitude !== "number" || typeof position.longitude !== "number") {
+    return null;
+  }
+
+  const busName = position.name || positionLineDesignation(position) || null;
+  const { progress, distMeters } = computeRouteProgress(route.routePoints, {
+    lat: position.latitude,
+    lon: position.longitude,
+  });
+
+  if (distMeters > MAX_ROUTE_DEVIATION_METERS) {
+    return { bus_name: busName, location_text: "Utanför Sjövik-Gråbo just nu.", progress: null };
+  }
+
+  const location_text =
+    progress < route.mjornFraction
+      ? `Mellan Sjövik och Mjörn (${Math.round(progress * 100)}%)`
+      : `Mellan Mjörn och Gråbo (${Math.round(progress * 100)}%)`;
+
+  return { bus_name: busName, location_text, progress };
+}
+
 // --- "Last seen" position (bottom-of-board section) ---
 //
 // The board above only shows a position when it can match the very NEXT
@@ -459,10 +518,13 @@ function describeDeparturePosition(route, departure) {
 // single sighting has ever been recorded, this field never reverts to
 // "unknown" again - only ever replaced by a newer sighting.
 //
-// Deliberately reuses describeDeparturePosition()'s result rather than a
-// second, separately-unverified way of picking "the" bus for a line out of
-// the raw /positions array - see that function's comment for the
-// detailsReference-matching caveat, which applies here too.
+// The caller passes whichever position result is best available - the
+// exact-departure match from describeDeparturePosition() when it found
+// one, otherwise the broader any-direction/any-route match from
+// describeAnyLinePosition() (see main()) - so "last seen" is populated by
+// ANY live sighting of that line's bus, not just one tied to the specific
+// upcoming scheduled trip. See describeDeparturePosition()'s comment for
+// the detailsReference-matching caveat, which applies to that first source.
 function buildLastSeen(positionResult, previousLastSeen, nowIso) {
   if (positionResult && positionResult.bus_name) {
     return {
@@ -629,8 +691,18 @@ async function main() {
   const mjornPosition = describeDeparturePosition(route, mjornNext);
   const graboPosition = describeDeparturePosition(route, graboNext);
 
-  const mjornLastSeen = buildLastSeen(mjornPosition, previousData?.mjorn_to_grabo?.last_seen, nowIso);
-  const graboLastSeen = buildLastSeen(graboPosition, previousData?.grabo_to_goteborg?.last_seen, nowIso);
+  // "Last seen" prefers the exact-departure match above, but falls back to
+  // ANY live fix for that line - wrong direction, a different route
+  // variant, whatever - rather than showing "no position" just because it
+  // isn't the one specific trip mjornNext/graboNext refers to. See
+  // describeAnyLinePosition()'s comment.
+  const mjornAnyPosition = describeAnyLinePosition(route, MJORN_LINE);
+  const graboAnyPosition = describeAnyLinePosition(route, GRABO_LINE);
+  const mjornSeenNow = mjornPosition?.bus_name ? mjornPosition : mjornAnyPosition;
+  const graboSeenNow = graboPosition?.bus_name ? graboPosition : graboAnyPosition;
+
+  const mjornLastSeen = buildLastSeen(mjornSeenNow, previousData?.mjorn_to_grabo?.last_seen, nowIso);
+  const graboLastSeen = buildLastSeen(graboSeenNow, previousData?.grabo_to_goteborg?.last_seen, nowIso);
 
   const mapPng = await renderPositionMap({
     mjornFraction,
