@@ -386,6 +386,18 @@ function computeRouteProgress(routePoints, busPoint) {
 // if `bus_location` never resolves after deploying this, check first
 // whether `detailsReference` on a /positions result actually equals the
 // one from /departures for the same trip.
+// X3 runs a much longer corridor than the tight box below covers (Gråbo ->
+// Göteborg -> Kullavik/Särö, ~25km+) - it's only inside a box drawn tightly
+// around Sjövik/Mjörn/Gråbo for the couple of minutes right around its
+// Gråbo departure, so "senast sedd" for that board was almost always
+// missing it entirely (not a matching bug - the vehicle just usually isn't
+// in the queried area at all). A second, much wider /positions query just
+// for GRABO_LINE, spanning Gråbo down to Göteborg, is merged in below so
+// there's a real chance of finding it wherever it currently is - resolved
+// by name via /locations/by-text like the other route points, rather than
+// hand-typing Göteborg's coordinates.
+const GRABO_WIDE_QUERY = "Nils Ericson Terminalen, Göteborg";
+
 async function resolveRoute(token) {
   const routePoints = [];
   for (const query of ROUTE_STOP_QUERIES) {
@@ -395,6 +407,7 @@ async function resolveRoute(token) {
   // if intermediate stops are ever added to ROUTE_STOP_QUERIES between
   // Sjövik and Mjörn (see the module-level NOTE), update this index too.
   const mjornFraction = fractionAtStop(routePoints, 1);
+  const graboPoint = routePoints[routePoints.length - 1]; // last entry in ROUTE_STOP_QUERIES
 
   const lats = routePoints.map((p) => p.lat);
   const lons = routePoints.map((p) => p.lon);
@@ -408,7 +421,26 @@ async function resolveRoute(token) {
     lineDesignations: [MJORN_LINE, GRABO_LINE], // both boards' buses can be in this box at once (they meet at Gråbo)
   });
 
-  return { routePoints, mjornFraction, positions };
+  // Best-effort - if the Göteborg lookup or the wide query fails, we just
+  // keep the tight-box results above rather than failing the whole fetch.
+  let widePositions = [];
+  try {
+    const goteborgPoint = await resolveLocation(token, GRABO_WIDE_QUERY);
+    const wideLats = [graboPoint.lat, goteborgPoint.lat];
+    const wideLons = [graboPoint.lon, goteborgPoint.lon];
+    const widePad = 0.05; // generous ~5.5km buffer along the whole Gråbo->Göteborg corridor
+    widePositions = await getPositions(token, {
+      minLat: Math.min(...wideLats) - widePad,
+      maxLat: Math.max(...wideLats) + widePad,
+      minLon: Math.min(...wideLons) - widePad,
+      maxLon: Math.max(...wideLons) + widePad,
+      lineDesignations: [GRABO_LINE],
+    });
+  } catch (err) {
+    console.error("Wide-area X3 position lookup failed - senast sedd for that board may be less reliable:", err);
+  }
+
+  return { routePoints, mjornFraction, positions: [...positions, ...widePositions] };
 }
 
 // Finds the live GPS fix for one specific departure (by detailsReference)

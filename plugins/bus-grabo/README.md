@@ -109,10 +109,21 @@ endpoint: pass a lat/long bounding box and (optionally) `lineDesignations`,
 get back real-time `{ latitude, longitude, name, line, direction, detailsReference }`
 for every matching vehicle currently running. That's genuine GPS, not an
 estimate from the timetable - confirmed via the API's own OpenAPI/swagger
-model docs. `resolveRoute()` calls it with a box drawn tightly around
-Sjövik/Mjörn/Gråbo (padded ~2km) and `lineDesignations: ["525", "X3"]`
-(both lines, since either board's bus could be in that box at once), so it
-should only ever pick up vehicles relevant to these two boards.
+model docs. `resolveRoute()` calls it twice:
+
+1. A box drawn tightly around Sjövik/Mjörn/Gråbo (padded ~2km),
+   `lineDesignations: ["525", "X3"]` (both lines, since either board's bus
+   could be in that box at once) - this is what the position-map/route-
+   progress math (`computeRouteProgress()`) is drawn from.
+2. A **second, much wider** box specifically for `GRABO_LINE` (X3),
+   spanning all the way from Gråbo down to Göteborg (resolved by name,
+   `GRABO_WIDE_QUERY`, not hand-typed coordinates) with a ~5.5km pad. X3
+   runs that whole ~25km+ corridor, so it's inside box #1 for maybe a
+   couple of minutes around its Gråbo departure and outside it the rest of
+   the time - box #2 exists purely so "senast sedd" for that board has a
+   real chance of finding it wherever it actually is right now, not just
+   right at Gråbo. Both boxes' results are merged into one `positions`
+   list before any matching happens.
 
 Each departure is then matched to its own fix in that result set by
 `detailsReference` (`describeDeparturePosition()`) - the same field name
@@ -397,6 +408,14 @@ matching noted above - the script logs the full `data.json` contents,
   changes the route network in the future, re-verify each independently
   against `debug_raw_departures` rather than assuming they're still the
   same line as each other.
+- **X3's "last seen" depends on a second, wide-area `/positions` query
+  reaching the bus at all** (`GRABO_WIDE_QUERY` in `resolveRoute()` - see
+  "The live position map" above). If Västtrafik's API ever paginates or
+  caps `/positions` results for a large bounding box, or if X3's actual
+  route runs somewhere unexpectedly far outside Gråbo<->Göteborg (e.g. a
+  diversion), this query might still miss it - widen `widePad` or the
+  `GRABO_WIDE_QUERY` point if "senast sedd" for that board stays stuck on
+  an old sighting for an implausibly long time.
 - **`/positions` and `/locations/by-text` are undocumented on Västtrafik's
   public developer portal pages** (found via the v4 API's own OpenAPI
   schema instead) - if Västtrafik ever changes their shape without notice,
