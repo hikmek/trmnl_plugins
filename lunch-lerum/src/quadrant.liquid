@@ -13,115 +13,144 @@ shows a pot + fish + salmon icon together, one per food/component
 mentioned, instead of a single generic icon). 44px (not 60px) because
 this pane has a fixed, non-scrolling height: an earlier 60px version
 pushed the dish text + Dagens kock column entirely out of the visible
-area (icons showed, everything below them vanished). The text column
-also got proportionally wider (flex: 1.4 vs Dagens kock's flex: 1),
-the row gap shrank (gap--large -> gap--small), and the Dagens kock
-photo/description shrank (34% max-height, 30-char description) to give
-the now-bigger icon row room without pushing the rest off-pane.
+area (icons showed, everything below them vanished). The Dagens kock
+photo/description also shrank (34% max-height, 30-char description) to
+give the now-bigger icon row room without pushing the rest off-pane.
 
-Each icon <img> lives in its own plain <table>/<td> cell (not TRMNL's
-  styled table component, and not a bare flex row) - same rule as
-  bus-grabo/weather-yr: a bare <div class="layout layout--row"> wrapper
-    around multiple <img> siblings lets the surrounding layout stretch them
-    into a squashed sliver instead of their real shape on a real device;
-    table cells don't have that problem.
+CAUTION - the dish-text/Dagens kock section below is a plain HTML
+`<table>` (one `<tr>`, two `<td>` cells), NOT a `<div class="layout
+                                                   layout--row">` with flex children. It used to be a flex row, and three
+  separate attempts to fix it that way - a bigger flex-grow share on the
+  text column, a smaller gap, and finally adding the `item` class every
+  other working flex row in this repo already has - all failed
+  identically on the real device: the two columns collapsed into one
+  narrow vertical sliver, with the dish text wrapped one character per
+  line and the Dagens kock photo squeezed into a thin strip. Every one of
+  those looked completely fine in every check possible without the real
+  device (tag balance, structure review), so don't trust that a `layout
+  layout--row` + `item` combination here will actually render as two
+  side-by-side columns just because it matches the working pattern
+  elsewhere in this repo - something about this specific spot (maybe the
+  preceding icon `<table>` sibling, maybe something else never isolated)
+    breaks it in a way that wasn't tracked down. Switching to a plain
+    `<table>` sidesteps the whole flex row mechanism, reusing the same
+      "plain unstyled table, not TRMNL's styled component" trick already
+      proven to work for the icon row above and for `template.liquid`'s
+      forecast table. Column widths are set with `width="58%"`/`width="42%"`
+      on the `<td>`s plus `table-layout: fixed` on the `<table>`, not with
+        flex-grow. If you need to touch this again, test on the real device
+        before trusting anything here, and prefer extending the table pattern
+        over reintroducing a `layout--row` in this specific spot.
 
-    Dish text: switched from `value value--small` (truncated to 40 chars,
-    which is what was cutting dish names off mid-word - "Fiskgryta med lax
-    och sej serveras me...") to the `description` class, truncated much more
-    generously at 70 chars (comfortably fits every dish in the autumn term
-    menu - the longest is ~63 chars - so in practice it never actually cuts
-    a real dish short) instead of 40. Not literally unlimited: with the
-    pane's fixed non-scrolling height, a truly unbounded dish name could
-    wrap into enough lines to push the rest of the content off-pane the same
-    way the 60px icons briefly did (see above) - 70 is a safety ceiling that
-    every real dish stays well under, not a visible truncation in practice.
-    `description` is deliberately smaller/lighter than `value` (matches the
-    size already used for "Dagens kock"'s own description line below) so a
-    long dish name still fits comfortably in this small pane.
+        Each icon <img> lives in its own plain <table>/<td> cell (not TRMNL's
+          styled table component, and not a bare flex row) - same rule as
+          bus-grabo/weather-yr: a bare <div class="layout layout--row"> wrapper
+            around multiple <img> siblings lets the surrounding layout stretch them
+            into a squashed sliver instead of their real shape on a real device;
+            table cells don't have that problem.
 
-    Bug fix (pre-existing, kept): this used to check ONLY today.lunch, so on
-    a day where only "Dagens Gröna" (vegetarian) was published (today.lunch
-    is null), it fell through all the way to the "No lunch info" fallback
-    even though a valid dish existed. Shows whichever of the two is actually
-    available, preferring Lunch when both exist (Full view shows both side
-    by side; Quadrant only has room for one).
+            Dish text: switched from `value value--small` (truncated to 40 chars,
+            which is what was cutting dish names off mid-word - "Fiskgryta med lax
+            och sej serveras me...") to the `description` class, truncated much more
+            generously at 70 chars (comfortably fits every dish in the autumn term
+            menu - the longest is ~63 chars - so in practice it never actually cuts
+            a real dish short) instead of 40. Not literally unlimited: with the
+            pane's fixed non-scrolling height, a truly unbounded dish name could
+            wrap into enough lines to push the rest of the content off-pane the same
+            way the 60px icons briefly did (see above) - 70 is a safety ceiling that
+            every real dish stays well under, not a visible truncation in practice.
+            `description` is deliberately smaller/lighter than `value` (matches the
+            size already used for "Dagens kock"'s own description line below) so a
+            long dish name still fits comfortably in this small pane.
 
-    Weekend note: skolmat never has data on Lördag/Söndag, so on weekends
-    this pane shows the hemmamat (home food) dish for whichever of the two
-    today actually is, instead of the generic "HELGn" text - more useful in
-    this small a space than a message that's just explaining an absence.
-    Hemmamat dishes don't get food icons (no keyword matching is done for
-    them), so there's no icon row on weekends - the pane just starts with
-    the "Hemmamat <day>" label instead.
+            Bug fix (pre-existing, kept): this used to check ONLY today.lunch, so on
+            a day where only "Dagens Gröna" (vegetarian) was published (today.lunch
+            is null), it fell through all the way to the "No lunch info" fallback
+            even though a valid dish existed. Shows whichever of the two is actually
+            available, preferring Lunch when both exist (Full view shows both side
+            by side; Quadrant only has room for one).
 
-      "Dagens kock" (right column): unrelated in content to the lunch data -
-      it's today's random pick from the broforce plugin's own portrait roster
-      (see fetch.mjs's pickDagensKock()), shown as a "Dagens kock:" label,
-      picture, name, and a short Swedish description underneath (fetch.mjs
-      translates broforce's English description via
-      DAGENS_KOCK_DESCRIPTIONS_SV - broforce's own Quadrant/Full stay English,
-      this translation is lunch-lerum-only).
-      {%- endcomment -%}
+            Weekend note: skolmat never has data on Lördag/Söndag, so on weekends
+            this pane shows the hemmamat (home food) dish for whichever of the two
+            today actually is, instead of the generic "HELGn" text - more useful in
+            this small a space than a message that's just explaining an absence.
+            Hemmamat dishes don't get food icons (no keyword matching is done for
+            them), so there's no icon row on weekends - the pane just starts with
+            the "Hemmamat <day>" label instead.
 
-      <div class="layout layout--col gap--xsmall">
+              "Dagens kock" (right column): unrelated in content to the lunch data -
+              it's today's random pick from the broforce plugin's own portrait roster
+              (see fetch.mjs's pickDagensKock()), shown as a "Dagens kock:" label,
+              picture, name, and a short Swedish description underneath (fetch.mjs
+              translates broforce's English description via
+              DAGENS_KOCK_DESCRIPTIONS_SV - broforce's own Quadrant/Full stay English,
+              this translation is lunch-lerum-only).
+              {%- endcomment -%}
 
-        {% if today.lunch and today.lunch_icon_urls.size > 0 %}
-        <table style="border-collapse: collapse; margin: 0 auto;">
-          <tr>
-            {% for icon_url in today.lunch_icon_urls %}
-            <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
-            {% endfor %}
-          </tr>
-        </table>
-        {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
-        <table style="border-collapse: collapse; margin: 0 auto;">
-          <tr>
-            {% for icon_url in today.vegetarian_icon_urls %}
-            <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
-            {% endfor %}
-          </tr>
-        </table>
-        {% endif %}
+              <div class="layout layout--col gap--xsmall">
 
-        <div class="layout layout--row gap--small">
-          <div class="layout layout--col layout--center gap--xsmall" style="flex: 1.4;">
-            {% if today.lunch %}
-            <div class="label">Dagens Lunch</div>
-            <div class="description" style="text-align: center;">{{ today.lunch | truncate: 70 }}</div>
-            {% elsif today.vegetarian %}
-            <div class="label">Dagens Gröna</div>
-            <div class="description" style="text-align: center;">{{ today.vegetarian | truncate: 70 }}</div>
-            {% elsif today.is_weekend %}
-            <div class="label">Hemmamat {{ today.weekday }}</div>
-            {% if today.hemmamat and today.weekday == "Lördag" %}
-            <div class="value value--small" style="text-align: center;">{{ today.hemmamat.lordag.lunch | truncate: 28 }} / {{ today.hemmamat.lordag.middag | truncate: 28 }}</div>
-            {% elsif today.hemmamat %}
-            <div class="value value--small" style="text-align: center;">{{ today.hemmamat.sondag.lunch | truncate: 28 }} / {{ today.hemmamat.sondag.middag | truncate: 28 }}</div>
-            {% else %}
-            <div class="value">{{ today.note }}</div>
-            {% endif %}
-            {% elsif today.note %}
-            <div class="label">{{ today.weekday }}</div>
-            <div class="value">{{ today.note }}</div>
-            {% else %}
-            <div class="value">No lunch info</div>
-            {% endif %}
-          </div>
+                {% if today.lunch and today.lunch_icon_urls.size > 0 %}
+                <table style="border-collapse: collapse; margin: 0 auto;">
+                  <tr>
+                    {% for icon_url in today.lunch_icon_urls %}
+                    <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+                    {% endfor %}
+                  </tr>
+                </table>
+                {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
+                <table style="border-collapse: collapse; margin: 0 auto;">
+                  <tr>
+                    {% for icon_url in today.vegetarian_icon_urls %}
+                    <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+                    {% endfor %}
+                  </tr>
+                </table>
+                {% endif %}
 
-          {% if today.dagens_kock %}
-          <div class="layout layout--col layout--center gap--xsmall" style="flex: 1;">
-            <div class="label">Dagens kock:</div>
-            <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 34%;">
-            <div class="label">{{ today.dagens_kock.name }}</div>
-            <div class="description" style="text-align: center;">{{ today.dagens_kock.description | truncate: 30 }}</div>
-          </div>
-          {% endif %}
-        </div>
+                <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                  <tr>
+                    <td style="border: none; vertical-align: top; padding: 0 4px;"{% if today.dagens_kock %} width="58%"{% else %} colspan="2"{% endif %}>
+                      <div class="layout layout--col layout--center gap--xsmall">
+                        {% if today.lunch %}
+                        <div class="label">Dagens Lunch</div>
+                        <div class="description" style="text-align: center;">{{ today.lunch | truncate: 70 }}</div>
+                        {% elsif today.vegetarian %}
+                        <div class="label">Dagens Gröna</div>
+                        <div class="description" style="text-align: center;">{{ today.vegetarian | truncate: 70 }}</div>
+                        {% elsif today.is_weekend %}
+                        <div class="label">Hemmamat {{ today.weekday }}</div>
+                        {% if today.hemmamat and today.weekday == "Lördag" %}
+                        <div class="value value--small" style="text-align: center;">{{ today.hemmamat.lordag.lunch | truncate: 28 }} / {{ today.hemmamat.lordag.middag | truncate: 28 }}</div>
+                        {% elsif today.hemmamat %}
+                        <div class="value value--small" style="text-align: center;">{{ today.hemmamat.sondag.lunch | truncate: 28 }} / {{ today.hemmamat.sondag.middag | truncate: 28 }}</div>
+                        {% else %}
+                        <div class="value">{{ today.note }}</div>
+                        {% endif %}
+                        {% elsif today.note %}
+                        <div class="label">{{ today.weekday }}</div>
+                        <div class="value">{{ today.note }}</div>
+                        {% else %}
+                        <div class="value">No lunch info</div>
+                        {% endif %}
+                      </div>
+                    </td>
 
-      </div>
+                    {% if today.dagens_kock %}
+                    <td style="border: none; vertical-align: top; padding: 0 4px;" width="42%">
+                      <div class="layout layout--col layout--center gap--xsmall">
+                        <div class="label">Dagens kock:</div>
+                        <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 34%;">
+                        <div class="label">{{ today.dagens_kock.name }}</div>
+                        <div class="description" style="text-align: center;">{{ today.dagens_kock.description | truncate: 30 }}</div>
+                      </div>
+                    </td>
+                    {% endif %}
+                  </tr>
+                </table>
 
-      <div class="title_bar">
-        <span class="title">Matn</span>
-        <span class="instance">{{ updated_display }}</span>
-      </div>
+              </div>
+
+              <div class="title_bar">
+                <span class="title">Matn</span>
+                <span class="instance">{{ updated_display }}</span>
+              </div>
