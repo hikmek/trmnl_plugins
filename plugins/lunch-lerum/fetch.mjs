@@ -137,39 +137,62 @@ async function pickDagensKock() {
 // Extensible keyword -> icon mapping. First match wins, so more specific /
 // more visually distinctive categories are listed first (e.g. "köttbullar"
 // before "pasta", so "Kycklingköttbullar serveras med pasta" shows
-// meatballs rather than pasta). Any dish that matches nothing falls back
-// to "generic" (a plain bowl) in iconForDish() below, so every dish that
-// exists always gets *some* icon.
+// meatballs rather than pasta). A dish can now match SEVERAL keywords at
+// once (e.g. "Fiskgryta med lax och sej" contains "gryta", "fisk" - inside
+// the compound word "Fiskgryta" - and "lax", and "sej" - see
+// iconsForDish() below, which returns every match, not just the first),
+// so it can show several icons together: one per distinct food/component
+// mentioned. Any dish that matches nothing falls back to "generic" (a
+// plain bowl), so every dish that exists always gets *some* icon.
 const FOOD_ICON_KEYWORDS = [
   { pattern: /köttbullar|kottbullar/i, icon: "meatballs" },
   { pattern: /spaghetti|pasta|lasagn|nudlar|nudel|penne/i, icon: "pasta" },
   { pattern: /korv/i, icon: "sausage" },
-  { pattern: /fisk|lax|sej/i, icon: "fish" },
+  // Salmon gets its own icon distinct from the generic "fish" one -
+  // checked before the generic fish pattern below so "lax" always adds
+  // the salmon icon even inside a word that also matches "fisk" (e.g.
+  // "Fiskgryta" contains "fisk", "lax och sej" separately mentions lax).
+  { pattern: /lax/i, icon: "salmon" },
+  { pattern: /fisk|sej|torsk/i, icon: "fish" },
   { pattern: /kyckling/i, icon: "chicken" },
   { pattern: /ris/i, icon: "rice" },
   { pattern: /taco/i, icon: "taco" },
   { pattern: /soppa|buffe|buffé|julbord/i, icon: "soup" },
   { pattern: /paj/i, icon: "pie" },
   { pattern: /pannkaka/i, icon: "pancake" },
-  { pattern: /gryta|curry|gulasch|chili/i, icon: "stew" },
+  // "gryta" (stew/pot) - renamed from the old "stew" icon to "pot" (an
+  // actual cooking-pot shape, not a bowl+swirl) per explicit request.
+  { pattern: /gryta|curry|gulasch|chili/i, icon: "pot" },
   { pattern: /gratäng|moussaka/i, icon: "casserole" },
   { pattern: /färs/i, icon: "meatloaf" },
   // These two are checked last (after specific food types), so e.g.
-  // "Kockens val av pastarätt" still shows pasta, but the truly generic
-  // "Kockens val" / "Kockens gröna" (no specific food mentioned) falls
-  // through to the chef-hat icon, and "Gästens val" to the people icon.
+  // "Kockens val av pastarätt" shows BOTH the pasta icon and the chef-hat
+  // icon (it's still useful to flag "chef's choice" even once the actual
+  // dish is known), and a truly generic "Kockens val" (no food mentioned)
+  // shows only the chef-hat icon; same idea for "Gästens val" -> people.
   { pattern: /kockens/i, icon: "chef" },
   { pattern: /gästens/i, icon: "people" },
 ];
 
-function iconForDish(text) {
-  if (!text) return null; // no dish at all - nothing to show an icon for
-  const match = FOOD_ICON_KEYWORDS.find((k) => k.pattern.test(text));
-  return match ? match.icon : "generic"; // always an icon for any real dish
+const MAX_ICONS_PER_DISH = 4; // safety cap - no real dish should ever hit this
+
+// Returns every distinct icon whose keyword pattern matches the dish text,
+// in FOOD_ICON_KEYWORDS order (deduplicated - "sej" and "fisk" both map to
+// "fish", so that icon is only added once even if both appear). Falls back
+// to a single "generic" icon if the dish text exists but matches nothing,
+// so every real dish always gets at least one icon.
+function iconsForDish(text) {
+  if (!text) return [];
+  const matches = [];
+  for (const k of FOOD_ICON_KEYWORDS) {
+    if (k.pattern.test(text) && !matches.includes(k.icon)) matches.push(k.icon);
+    if (matches.length >= MAX_ICONS_PER_DISH) break;
+  }
+  return matches.length ? matches : ["generic"];
 }
 
-function iconUrl(icon) {
-  return icon ? `${ICON_BASE_URL}/${icon}.png` : null;
+function iconUrls(icons) {
+  return icons.map((icon) => `${ICON_BASE_URL}/${icon}.png`);
 }
 
 function stripTags(html) {
@@ -324,17 +347,14 @@ function parseDays(html) {
       }
     }
 
-    const lunchIcon = iconForDish(lunch);
-    const vegetarianIcon = iconForDish(vegetarian);
-
     days.push({
       date,
       weekday,
       note: note ? note.trim() : null,
       lunch,
-      lunch_icon_url: iconUrl(lunchIcon),
+      lunch_icon_urls: iconUrls(iconsForDish(lunch)),
       vegetarian,
-      vegetarian_icon_url: iconUrl(vegetarianIcon),
+      vegetarian_icon_urls: iconUrls(iconsForDish(vegetarian)),
     });
   }
 
@@ -407,9 +427,9 @@ async function main() {
           // the page just doesn't have yet).
           note: isWeekend ? "HELGn = Ingen skolmatn" : "No menu published for this date",
           lunch: null,
-          lunch_icon_url: null,
+          lunch_icon_urls: [],
           vegetarian: null,
-          vegetarian_icon_url: null,
+          vegetarian_icon_urls: [],
           hemmamat,
           dagens_kock: dagensKock,
         };

@@ -102,9 +102,9 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
     "is_weekend": false,   // true only on Lördag/Söndag
     "note": null,          // e.g. "Höstlov", "Studiedag", "Terminsstart" - null on normal days
     "lunch": "Panerad fisk med remouladsås och kokt potatis",
-    "lunch_icon_url": null, // set only if the dish text matches a known keyword (see below)
+    "lunch_icon_urls": ["fish"], // every matching keyword, not just the first - can be several (see below)
     "vegetarian": null,    // null if only one option was published that day
-    "vegetarian_icon_url": null,
+    "vegetarian_icon_urls": [],
     "hemmamat": {          // current ISO week's row from the sheet - fetched every day, not just weekends
       "vecka": 37,                // ISO week number, matches the sheet's "vecka" column
       "lordag": { "lunch": "soppa på spik", "middag": "spädgris" },
@@ -137,37 +137,53 @@ never blocks skolmat data from publishing.
 
 ## Pixel-art food icons
 
-`generate-icons.mjs` procedurally draws 16 small black/white pixel-art
-icons (no external images, no licensing concerns) into `icons/*.png`:
-13 food-type icons (`pasta`, `meatballs`, `fish`, `chicken`, `sausage`,
-`rice`, `soup`, `taco`, `stew`, `pie`, `pancake`, `meatloaf`, `casserole`),
-2 "who chose" icons (`chef` - a toque/chef's hat, for "Kockens val";
-`people` - two person silhouettes, for "Gästens val"), and `generic` (a
-plain empty bowl) as the ultimate fallback. These are static assets
-committed to git and copied into `public/lunch-lerum/icons/` by the
-shared workflow (same pattern as banksy's gallery / weather-yr's icons).
+`generate-icons.mjs` procedurally draws 17 pixel-art icons at a 32x32 grid
+(finer/more granular than the old 16x16 grid - no external images, no
+licensing concerns) into `icons/*.png`: 14 food-type icons (`pasta`,
+`meatballs`, `fish`, `salmon`, `chicken`, `sausage`, `rice`, `soup`,
+`taco`, `pie`, `pancake`, `meatloaf`, `casserole`, `pot` - a stew/curry/
+gulasch pot with a lid and steam lines, replacing the old single `stew`
+icon), 2 "who chose" icons (`chef` - a toque/chef's hat, for "Kockens
+val"; `people` - two person silhouettes, for "Gästens val"), and
+`generic` (a plain empty bowl) as the ultimate fallback. `salmon` reuses
+`fish`'s silhouette plus three diagonal subtractive stripe cutouts (not
+an additive overlay - additive details drawn inside an already-solid
+black shape render identically to the base icon, a bug found the hard
+way in weather-yr's clothing icons; subtracting pixels from the solid
+fill is what actually shows up). These are static assets committed to
+git and copied into `public/lunch-lerum/icons/` by the shared workflow
+(same pattern as banksy's gallery / weather-yr's icons).
 
-`fetch.mjs` matches the `lunch`/`vegetarian` dish text against a
-priority-ordered keyword list (`FOOD_ICON_KEYWORDS`, first match wins -
-more specific food categories are checked first, then "kockens"/"gästens"
-near the end, so e.g. "Kockens val av pastarätt" still shows pasta, but
-the truly generic "Kockens val" shows the chef hat) and sets
-`lunch_icon_url` / `vegetarian_icon_url` accordingly. **Every actual dish
-always gets an icon**: if no keyword matches, `iconForDish()` falls back
-to `"generic"` rather than `null` (a `null` icon URL only happens when
-there's no dish at all that day). Across the full autumn term menu (78
-unique dishes), 73 get a specific icon and only 5 fall back to generic.
+**A dish can show several icons together now.** `fetch.mjs`'s
+`iconsForDish()` walks the keyword list (`FOOD_ICON_KEYWORDS`) and
+collects **every** matching keyword (deduped, capped at
+`MAX_ICONS_PER_DISH = 4`), not just the first - e.g. "Fiskgryta med lax
+och sej" matches `lax` → salmon, `fisk|sej|torsk` → fish, and
+`gryta|curry|gulasch|chili` → pot, so it shows all three icons side by
+side. `lunch_icon_urls` / `vegetarian_icon_urls` are now **arrays** (was
+a single `lunch_icon_url` / `vegetarian_icon_url` string) built by
+`iconUrls()`. **Every actual dish always gets at least one icon**: if no
+keyword matches, `iconsForDish()` falls back to `["generic"]` rather than
+an empty array (an empty array only happens when there's no dish at all
+that day).
 
-`template.liquid` and `template.quadrant.liquid` show the icon **below**
-the dish text, centered, in both the "today" section and the upcoming
-table.
+Each icon `<img>` is rendered inside its own plain `<table>`/`<td>` cell
+(not TRMNL's styled table component, and not a bare flex row of `<img>`
+siblings) - a bare row of `<img>` tags gets squashed into a narrow
+sliver on a real device, table cells render each icon at full size
+instead (same lesson learned in bus-grabo/weather-yr). In
+`template.quadrant.liquid` this icon row sits centered at the very
+**top** of the pane, above the dish text, and the icons are bigger
+(60px). In `template.liquid` the icons sit below the dish text (Skolmatn
+column: 64px; upcoming-days forecast table: 26px each).
 
 To add more dishes/categories: add a `{ pattern: /keyword/i, icon: "name" }`
-entry to `FOOD_ICON_KEYWORDS` in `fetch.mjs` (remember: order matters,
-more specific first), draw a matching shape function in
-`generate-icons.mjs` (reuse the `bowl()` + `withBowl()` helpers - a
-topping function just needs to return a boolean grid for the area above
-the bowl rim), then re-run:
+entry to `FOOD_ICON_KEYWORDS` in `fetch.mjs`, draw a matching shape
+function in `generate-icons.mjs` (reuse the `bowl()` + `withBowl()`
+helpers - a topping function just needs to return a boolean grid for the
+area above the bowl rim; use `const u = size / 16;` to scale any
+plain-integer pixel offsets so the shape doesn't shrink if `GRID` is ever
+changed again), then re-run:
 
 ```powershell
 node plugins/lunch-lerum/generate-icons.mjs
