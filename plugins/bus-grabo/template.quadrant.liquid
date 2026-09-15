@@ -22,6 +22,12 @@
   let the surrounding layout stretch an icon into a tall narrow sliver
   instead of its real landscape shape on a real device, table cells don't
   have that problem.
+
+  Line badge: a small black-background/white-text <span> with the board's
+  line number (525 or X3) - once in the header row next to "MJÖRN > GRÅBO"
+  / "GRÅBO > GÖTEBORG", and again on the "Senaste position" line, so it's
+  clear at a glance which line each row is about (same as template.liquid -
+  see its comment for why).
 {%- endcomment -%}
 
 <div class="layout layout--col gap--small">
@@ -31,7 +37,7 @@
       <td rowspan="2" style="width: 48px; border: none; padding: 0 6px 0 0; text-align: center; vertical-align: middle;">
         <img class="image image--contain image-dither" src="{{ mjorn_to_grabo.icon_url }}" width="44" height="22" style="width: 44px; height: 22px;">
       </td>
-      <td colspan="2" style="border: none; padding: 0; text-align: left;"><div class="label">MJÖRN &gt; GRÅBO</div></td>
+      <td colspan="2" style="border: none; padding: 0; text-align: left;"><div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 4px;">{{ mjorn_to_grabo.line }}</span>MJÖRN &gt; GRÅBO</div></td>
     </tr>
     <tr>
       {% if mjorn_to_grabo.has_departure %}
@@ -46,7 +52,7 @@
       {% endif %}
     </tr>
   </table>
-  <div class="label">Senaste position: {{ mjorn_to_grabo.last_seen.location_text }} ({{ mjorn_to_grabo.last_seen.seen_at_display }})</div>
+  <div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 4px;">{{ mjorn_to_grabo.line }}</span>Senaste position: {{ mjorn_to_grabo.last_seen.location_text }} ({{ mjorn_to_grabo.last_seen.seen_at_display }})</div>
 
   <div class="divider"></div>
 
@@ -55,7 +61,7 @@
       <td rowspan="2" style="width: 48px; border: none; padding: 0 6px 0 0; text-align: center; vertical-align: middle;">
         <img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="44" height="22" style="width: 44px; height: 22px;">
       </td>
-      <td colspan="2" style="border: none; padding: 0; text-align: left;"><div class="label">GRÅBO &gt; GÖTEBORG</div></td>
+      <td colspan="2" style="border: none; padding: 0; text-align: left;"><div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 4px;">{{ grabo_to_goteborg.line }}</span>GRÅBO &gt; GÖTEBORG</div></td>
     </tr>
     <tr>
       {% if grabo_to_goteborg.has_departure %}
@@ -70,7 +76,7 @@
       {% endif %}
     </tr>
   </table>
-  <div class="label">Senaste position: {{ grabo_to_goteborg.last_seen.location_text }} ({{ grabo_to_goteborg.last_seen.seen_at_display }})</div>
+  <div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 4px;">{{ grabo_to_goteborg.line }}</span>Senaste position: {{ grabo_to_goteborg.last_seen.location_text }} ({{ grabo_to_goteborg.last_seen.seen_at_display }})</div>
 
 </div>
 

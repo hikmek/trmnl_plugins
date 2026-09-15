@@ -239,6 +239,25 @@ or the previous-`data.json` network fetch failing) does it fall back to a
 plain "no sighting yet" message - the only case where "senast sedd" can
 show nothing meaningful.
 
+## Line badge (525 / X3)
+
+Every departure row (ETD and Nästa, both boards) and every "Senaste
+position" row also shows a small black-background/white-text badge with
+that board's line number - `<div>`/`<span>` with inline
+`background: #000; color: #fff;` around the `{{ line }}` value (which is
+always the board's own static `mjorn_to_grabo.line` / "525" or
+`grabo_to_goteborg.line` / "X3" - each board is permanently tied to one
+line, see `MJORN_LINE`/`GRABO_LINE` in `fetch.mjs`, so no new data was
+needed for this, just markup). It exists so it's clear at a glance which
+of the two unrelated lines/buses a given row is about, without having to
+read back up to the "MJÖRN > GRÅBO" / "GRÅBO > GBG" column header. Since
+the badge already states the line, the "Senaste position" text no longer
+repeats it with a `{{ last_seen.bus_name | default: line }}: ` prefix
+(dropped in `template.liquid`) - it's just the stop name + timestamp.
+`template.quadrant.liquid` puts the same badge inline before the
+"MJÖRN > GRÅBO" header text and before "Senaste position" instead, to fit
+the narrower pane.
+
 ## Debugging "Ingen avgång" (no departure) or a wrong/missing line
 
 If `mjorn_to_grabo.has_departure` (or `grabo_to_goteborg`'s) is `false`, or

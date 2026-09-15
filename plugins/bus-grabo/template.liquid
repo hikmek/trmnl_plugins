@@ -49,6 +49,16 @@
   Unlike bus_location above (which is often "unknown" between trips),
   last_seen is designed to always have something to show once any sighting
   has ever been recorded - see fetch.mjs's buildLastSeen().
+
+  Line badge: every departure row and every "Senaste position" row also
+  shows a small black-background/white-text badge with the board's line
+  number (525 or X3 - each board is permanently tied to one line, see
+  fetch.mjs's MJORN_LINE/GRABO_LINE) so it's clear at a glance which of the
+  two unrelated lines/buses a given row is about, without having to read
+  back up to the "MJÖRN > GRÅBO" / "GRÅBO > GBG" column header. Since the
+  badge already states the line, the "Senaste position" text no longer
+  repeats it (dropped the old "{{ last_seen.bus_name | default: line }}: "
+  prefix) - it's just the stop name + timestamp now.
 {%- endcomment -%}
 
 <div class="layout layout--col gap--medium">
@@ -70,7 +80,7 @@
     </tr>
     <tr>
       {% if mjorn_to_grabo.has_departure %}
-      <td style="border: none; padding: 4px 6px 0 6px; text-align: center;"><div class="label">{{ mjorn_to_grabo.line }}</div></td>
+      <td style="border: none; padding: 4px 6px 0 6px; text-align: center;"><div class="label" style="background: #000; color: #fff; display: inline-block; padding: 1px 8px;">{{ mjorn_to_grabo.line }}</div></td>
       <td style="border: 1px solid #000; padding: 2px 8px; text-align: center;"><div class="label">{{ mjorn_to_grabo.estimated_time }}{% if mjorn_to_grabo.delay_minutes > 0 %} (+{{ mjorn_to_grabo.delay_minutes }}){% endif %}</div></td>
       <td style="border: none; padding: 4px 6px 0 6px; text-align: left;"><div class="label">{{ mjorn_to_grabo.destination }}{% if mjorn_to_grabo.is_cancelled %} - INSTÄLLD{% endif %}</div></td>
       {% else %}
@@ -78,7 +88,7 @@
       {% endif %}
 
       {% if grabo_to_goteborg.has_departure %}
-      <td style="border: none; padding: 4px 6px 0 6px; text-align: center;"><div class="label">{{ grabo_to_goteborg.line }}</div></td>
+      <td style="border: none; padding: 4px 6px 0 6px; text-align: center;"><div class="label" style="background: #000; color: #fff; display: inline-block; padding: 1px 8px;">{{ grabo_to_goteborg.line }}</div></td>
       <td style="border: 1px solid #000; padding: 2px 8px; text-align: center;"><div class="label">{{ grabo_to_goteborg.estimated_time }}{% if grabo_to_goteborg.delay_minutes > 0 %} (+{{ grabo_to_goteborg.delay_minutes }}){% endif %}</div></td>
       <td style="border: none; padding: 4px 6px 0 6px; text-align: left;"><div class="label">{{ grabo_to_goteborg.destination }}{% if grabo_to_goteborg.is_cancelled %} - INSTÄLLD{% endif %}</div></td>
       {% else %}
@@ -87,7 +97,7 @@
     </tr>
     <tr>
       {% if mjorn_to_grabo.next_departure_time %}
-      <td style="border: none; padding: 2px 6px 4px 6px; text-align: center;"><div class="label">{{ mjorn_to_grabo.line }}</div></td>
+      <td style="border: none; padding: 2px 6px 4px 6px; text-align: center;"><div class="label" style="background: #000; color: #fff; display: inline-block; padding: 1px 8px;">{{ mjorn_to_grabo.line }}</div></td>
       <td style="border: 1px solid #000; padding: 2px 8px; text-align: center;"><div class="label">{{ mjorn_to_grabo.next_departure_time }}</div></td>
       <td style="border: none; padding: 2px 6px 4px 6px; text-align: left;"><div class="label">{{ mjorn_to_grabo.destination }}</div></td>
       {% else %}
@@ -95,7 +105,7 @@
       {% endif %}
 
       {% if grabo_to_goteborg.next_departure_time %}
-      <td style="border: none; padding: 2px 6px 4px 6px; text-align: center;"><div class="label">{{ grabo_to_goteborg.line }}</div></td>
+      <td style="border: none; padding: 2px 6px 4px 6px; text-align: center;"><div class="label" style="background: #000; color: #fff; display: inline-block; padding: 1px 8px;">{{ grabo_to_goteborg.line }}</div></td>
       <td style="border: 1px solid #000; padding: 2px 8px; text-align: center;"><div class="label">{{ grabo_to_goteborg.next_departure_time }}</div></td>
       <td style="border: none; padding: 2px 6px 4px 6px; text-align: left;"><div class="label">{{ grabo_to_goteborg.destination }}</div></td>
       {% else %}
@@ -125,16 +135,22 @@
       <td style="width: 48px; border: none; padding: 0 6px 0 0; text-align: center; vertical-align: middle;">
         <img class="image image--contain image-dither" src="{{ mjorn_to_grabo.icon_url }}" width="44" height="22" style="width: 44px; height: 22px;">
       </td>
+      <td style="width: 44px; border: none; padding: 0 6px 0 0; text-align: center; vertical-align: middle;">
+        <div class="label" style="background: #000; color: #fff; display: inline-block; padding: 1px 8px;">{{ mjorn_to_grabo.line }}</div>
+      </td>
       <td style="border: none; padding: 0; text-align: left; vertical-align: middle;">
-        <div class="label">{{ mjorn_to_grabo.last_seen.bus_name | default: mjorn_to_grabo.line }}: {{ mjorn_to_grabo.last_seen.location_text }} - {{ mjorn_to_grabo.last_seen.seen_at_display }}</div>
+        <div class="label">{{ mjorn_to_grabo.last_seen.location_text }} - {{ mjorn_to_grabo.last_seen.seen_at_display }}</div>
       </td>
     </tr>
     <tr>
       <td style="width: 48px; border: none; padding: 0 6px 0 0; text-align: center; vertical-align: middle;">
         <img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="44" height="22" style="width: 44px; height: 22px;">
       </td>
+      <td style="width: 44px; border: none; padding: 0 6px 0 0; text-align: center; vertical-align: middle;">
+        <div class="label" style="background: #000; color: #fff; display: inline-block; padding: 1px 8px;">{{ grabo_to_goteborg.line }}</div>
+      </td>
       <td style="border: none; padding: 0; text-align: left; vertical-align: middle;">
-        <div class="label">{{ grabo_to_goteborg.last_seen.bus_name | default: grabo_to_goteborg.line }}: {{ grabo_to_goteborg.last_seen.location_text }} - {{ grabo_to_goteborg.last_seen.seen_at_display }}</div>
+        <div class="label">{{ grabo_to_goteborg.last_seen.location_text }} - {{ grabo_to_goteborg.last_seen.seen_at_display }}</div>
       </td>
     </tr>
   </table>
