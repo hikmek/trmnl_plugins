@@ -202,9 +202,36 @@ vanished, with no partial cut-off - the renderer appears to crop
 whatever doesn't fit rather than shrink or scroll it). 44px was chosen
 as the biggest size that leaves room for the rest of the pane's content;
 if you make icons bigger again, expect to also shrink something else
-below them (text column width/gap, Dagens kock's photo height, its
-description's truncate length) to compensate, and re-check the real
-device rather than assuming it fits. The dish text also has a generous
+below them (Dagens kock's photo height, its description's truncate
+length) to compensate, and re-check the real device rather than
+assuming it fits.
+
+**The dish-text/Dagens kock section is a plain HTML `<table>` (one
+`<tr>`, two `<td>`s), not a `<div class="layout layout--row">` with flex
+children - and that's not a style choice, it's a workaround.** It used
+to be a flex row, and it broke badly on the real device: the two columns
+collapsed into one narrow vertical sliver, with the dish text wrapped
+one character per line and the Dagens kock photo squeezed into a thin
+strip, instead of rendering side by side. Three different fixes were
+tried, in order - a bigger flex-grow share on the text column
+(`flex: 1.4`) with a smaller gap, reverting that back to the plain
+`flex: 1`/`gap--large` every other row in this repo uses, and then
+adding the `item` class that every *other* working flex row here already
+has (comparing against `template.liquid`'s three-column row, which has
+rendered correctly this whole time) - and all three produced the
+identical broken sliver on the real device, despite each looking
+completely fine by every check possible without it (tag balance,
+structure review). Whatever's actually broken about a `layout--row` in
+this specific spot was never isolated. Switching to a plain `<table>`
+(column widths via `width="58%"`/`width="42%"` on the `<td>`s plus
+`table-layout: fixed`, not flex-grow) sidesteps the whole mechanism by
+reusing the same "plain unstyled table" trick already proven to work for
+the icon row above and for `template.liquid`'s forecast table. If this
+section needs changes again, test on the real device before trusting
+anything, and prefer extending the table pattern over reintroducing a
+`layout--row` here.
+
+The dish text also has a generous
 70-character truncate as a safety net for this same reason - every dish
 in the current term (~63 chars max) fits well under it, so it's not
 visible in practice, but an unbounded name could in principle wrap

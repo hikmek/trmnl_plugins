@@ -13,11 +13,34 @@
   mentioned, instead of a single generic icon). 44px (not 60px) because
   this pane has a fixed, non-scrolling height: an earlier 60px version
   pushed the dish text + Dagens kock column entirely out of the visible
-  area (icons showed, everything below them vanished). The text column
-  also got proportionally wider (flex: 1.4 vs Dagens kock's flex: 1),
-  the row gap shrank (gap--large -> gap--small), and the Dagens kock
-  photo/description shrank (34% max-height, 30-char description) to give
-  the now-bigger icon row room without pushing the rest off-pane.
+  area (icons showed, everything below them vanished). The Dagens kock
+  photo/description also shrank (34% max-height, 30-char description) to
+  give the now-bigger icon row room without pushing the rest off-pane.
+
+  CAUTION - the dish-text/Dagens kock section below is a plain HTML
+  `<table>` (one `<tr>`, two `<td>` cells), NOT a `<div class="layout
+  layout--row">` with flex children. It used to be a flex row, and three
+  separate attempts to fix it that way - a bigger flex-grow share on the
+  text column, a smaller gap, and finally adding the `item` class every
+  other working flex row in this repo already has - all failed
+  identically on the real device: the two columns collapsed into one
+  narrow vertical sliver, with the dish text wrapped one character per
+  line and the Dagens kock photo squeezed into a thin strip. Every one of
+  those looked completely fine in every check possible without the real
+  device (tag balance, structure review), so don't trust that a `layout
+  layout--row` + `item` combination here will actually render as two
+  side-by-side columns just because it matches the working pattern
+  elsewhere in this repo - something about this specific spot (maybe the
+  preceding icon `<table>` sibling, maybe something else never isolated)
+  breaks it in a way that wasn't tracked down. Switching to a plain
+  `<table>` sidesteps the whole flex row mechanism, reusing the same
+  "plain unstyled table, not TRMNL's styled component" trick already
+  proven to work for the icon row above and for `template.liquid`'s
+  forecast table. Column widths are set with `width="58%"`/`width="42%"`
+  on the `<td>`s plus `table-layout: fixed` on the `<table>`, not with
+  flex-grow. If you need to touch this again, test on the real device
+  before trusting anything here, and prefer extending the table pattern
+  over reintroducing a `layout--row` in this specific spot.
 
   Each icon <img> lives in its own plain <table>/<td> cell (not TRMNL's
   styled table component, and not a bare flex row) - same rule as
@@ -84,40 +107,46 @@
   </table>
   {% endif %}
 
-  <div class="layout layout--row gap--small">
-    <div class="layout layout--col layout--center gap--xsmall" style="flex: 1.4;">
-      {% if today.lunch %}
-      <div class="label">Dagens Lunch</div>
-      <div class="description" style="text-align: center;">{{ today.lunch | truncate: 70 }}</div>
-      {% elsif today.vegetarian %}
-      <div class="label">Dagens Gröna</div>
-      <div class="description" style="text-align: center;">{{ today.vegetarian | truncate: 70 }}</div>
-      {% elsif today.is_weekend %}
-      <div class="label">Hemmamat {{ today.weekday }}</div>
-      {% if today.hemmamat and today.weekday == "Lördag" %}
-      <div class="value value--small" style="text-align: center;">{{ today.hemmamat.lordag.lunch | truncate: 28 }} / {{ today.hemmamat.lordag.middag | truncate: 28 }}</div>
-      {% elsif today.hemmamat %}
-      <div class="value value--small" style="text-align: center;">{{ today.hemmamat.sondag.lunch | truncate: 28 }} / {{ today.hemmamat.sondag.middag | truncate: 28 }}</div>
-      {% else %}
-      <div class="value">{{ today.note }}</div>
-      {% endif %}
-      {% elsif today.note %}
-      <div class="label">{{ today.weekday }}</div>
-      <div class="value">{{ today.note }}</div>
-      {% else %}
-      <div class="value">No lunch info</div>
-      {% endif %}
-    </div>
+  <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+    <tr>
+      <td style="border: none; vertical-align: top; padding: 0 4px;"{% if today.dagens_kock %} width="58%"{% else %} colspan="2"{% endif %}>
+        <div class="layout layout--col layout--center gap--xsmall">
+          {% if today.lunch %}
+          <div class="label">Dagens Lunch</div>
+          <div class="description" style="text-align: center;">{{ today.lunch | truncate: 70 }}</div>
+          {% elsif today.vegetarian %}
+          <div class="label">Dagens Gröna</div>
+          <div class="description" style="text-align: center;">{{ today.vegetarian | truncate: 70 }}</div>
+          {% elsif today.is_weekend %}
+          <div class="label">Hemmamat {{ today.weekday }}</div>
+          {% if today.hemmamat and today.weekday == "Lördag" %}
+          <div class="value value--small" style="text-align: center;">{{ today.hemmamat.lordag.lunch | truncate: 28 }} / {{ today.hemmamat.lordag.middag | truncate: 28 }}</div>
+          {% elsif today.hemmamat %}
+          <div class="value value--small" style="text-align: center;">{{ today.hemmamat.sondag.lunch | truncate: 28 }} / {{ today.hemmamat.sondag.middag | truncate: 28 }}</div>
+          {% else %}
+          <div class="value">{{ today.note }}</div>
+          {% endif %}
+          {% elsif today.note %}
+          <div class="label">{{ today.weekday }}</div>
+          <div class="value">{{ today.note }}</div>
+          {% else %}
+          <div class="value">No lunch info</div>
+          {% endif %}
+        </div>
+      </td>
 
-    {% if today.dagens_kock %}
-    <div class="layout layout--col layout--center gap--xsmall" style="flex: 1;">
-      <div class="label">Dagens kock:</div>
-      <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 34%;">
-      <div class="label">{{ today.dagens_kock.name }}</div>
-      <div class="description" style="text-align: center;">{{ today.dagens_kock.description | truncate: 30 }}</div>
-    </div>
-    {% endif %}
-  </div>
+      {% if today.dagens_kock %}
+      <td style="border: none; vertical-align: top; padding: 0 4px;" width="42%">
+        <div class="layout layout--col layout--center gap--xsmall">
+          <div class="label">Dagens kock:</div>
+          <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 34%;">
+          <div class="label">{{ today.dagens_kock.name }}</div>
+          <div class="description" style="text-align: center;">{{ today.dagens_kock.description | truncate: 30 }}</div>
+        </div>
+      </td>
+      {% endif %}
+    </tr>
+  </table>
 
 </div>
 
