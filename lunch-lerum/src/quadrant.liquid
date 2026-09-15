@@ -54,7 +54,7 @@ Each icon <img> lives in its own plain <table>/<td> cell (not TRMNL's
 
       <div class="layout layout--col gap--xsmall">
 
-        {% if today.lunch %}
+        {% if today.lunch and today.lunch_icon_urls.size > 0 %}
         <table style="border-collapse: collapse; margin: 0 auto;">
           <tr>
             {% for icon_url in today.lunch_icon_urls %}
@@ -62,7 +62,7 @@ Each icon <img> lives in its own plain <table>/<td> cell (not TRMNL's
             {% endfor %}
           </tr>
         </table>
-        {% elsif today.vegetarian %}
+        {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
         <table style="border-collapse: collapse; margin: 0 auto;">
           <tr>
             {% for icon_url in today.vegetarian_icon_urls %}
