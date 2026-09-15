@@ -57,18 +57,18 @@ temperature" below.
     "temperature_sources": { "yr.no": 14.5, "smhi": 13.9, "open-meteo": 14.2 }, // whichever of the 3 succeeded this run
     "condition_code": "partlycloudy_day",
     "condition_text": "Partly cloudy",
-    "icon": "partly-cloudy",
-    "icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/partly-cloudy.png",
+    "icon": "partly-cloudy",           // bucket name only - no variant number
+    "icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/partly-cloudy-2.png", // random variant (1-3) picked this run
     "wind_speed": 3.1,
     "humidity": 78,
     "precipitation_next_hour": 0.0,
     "clothing_icon": "tshirt-jacket",  // picked from the averaged temperature, see CLOTHING_BANDS in fetch.mjs
-    "clothing_icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/clothing-tshirt-jacket.png",
+    "clothing_icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/clothing-tshirt-jacket-1.png", // random variant (1-3)
     "clothing_text": "T-shirt & tunn jacka",
     "needs_rain_gear": false,          // true if rain/sleet/thunder is indicated now or in the next hour
-    "rain_gear_icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/clothing-umbrella.png",
+    "rain_gear_icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/clothing-umbrella-3.png", // random variant (1-3)
     "needs_wind_gear": false,          // true if wind_speed >= WIND_GEAR_THRESHOLD_MS (8 m/s), regardless of temperature
-    "wind_gear_icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/clothing-windbreaker.png",
+    "wind_gear_icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/clothing-windbreaker-1.png", // random variant (1-3)
     "rain_starts_at": null,            // set only when NOT currently raining: ISO time of the first upcoming rain within 60 min, else null
     "rain_period_started_at": null,    // set only while CURRENTLY raining: ISO time this rain period began (carried across runs), else null
     "rain_period_ends_at": null,       // set only while CURRENTLY raining: ISO time it's expected to stop (within 12h), else null
@@ -84,7 +84,7 @@ temperature" below.
       "condition_code": "partlycloudy_day",
       "condition_text": "Partly cloudy",
       "icon": "partly-cloudy",
-      "icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/partly-cloudy.png",
+      "icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/partly-cloudy-3.png", // random variant (1-3)
       "precipitation_mm": 0.4
     }
     // ...4 more days
@@ -121,23 +121,28 @@ obtained that run, for transparency/debugging.
 Alongside the weather icon, `current.clothing_icon_url` (and, when
 conditions call for it, `current.rain_gear_icon_url` and/or
 `current.wind_gear_icon_url`) point at pixel-art clothing icons generated
-by `generate-clothing-icons.mjs` (same 16x16-grid / nearest-neighbor-
-upscale technique as the weather icons, see below) - `icons/clothing-*.png`.
+by `generate-clothing-icons.mjs` (same 32x32-grid / nearest-neighbor-
+upscale technique as the weather icons, see "Pixel-art weather icons"
+below - each item has 3 variants, randomly picked on every fetch run) -
+`icons/clothing-<slug>-<variant>.png`.
 
 `fetch.mjs`'s `CLOTHING_BANDS` picks one outfit from the averaged
 `current.temperature` - 8 bands now (was 5), for finer-grained
 recommendations across the full range from very hot to extreme cold:
 
-| Temperature | Icon | Text |
+| Temperature | Icon slug | Text |
 | --- | --- | --- |
-| ≥ 25°C | `clothing-tank-top.png` | Linne & shorts |
-| 20–24.9°C | `clothing-shorts-tshirt.png` | T-shirt & shorts |
-| 15–19.9°C | `clothing-tshirt-jacket.png` | T-shirt & tunn jacka |
-| 8–14.9°C | `clothing-light-jacket.png` | Lätt jacka |
-| 3–7.9°C | `clothing-jacket.png` | Jacka |
-| -5–2.9°C | `clothing-warm-jacket.png` | Varm jacka & mössa |
-| -15– -5.1°C | `clothing-winter-coat.png` | Vinterjacka, mössa & vantar |
-| < -15°C | `clothing-extreme-cold.png` | Tjock vinterjacka, mössa, scarf & vantar |
+| ≥ 25°C | `tank-top` | Linne & shorts |
+| 20–24.9°C | `shorts-tshirt` | T-shirt & shorts |
+| 15–19.9°C | `tshirt-jacket` | T-shirt & tunn jacka |
+| 8–14.9°C | `light-jacket` | Lätt jacka |
+| 3–7.9°C | `jacket` | Jacka |
+| -5–2.9°C | `warm-jacket` | Varm jacka & mössa |
+| -15– -5.1°C | `winter-coat` | Vinterjacka, mössa & vantar |
+| < -15°C | `extreme-cold` | Tjock vinterjacka, mössa, scarf & vantar |
+
+(Each slug above maps to `clothing-<slug>-1.png` / `-2.png` / `-3.png` -
+`clothingIconUrl()` picks one of the three at random each run.)
 
 Separately, two more gear icons can appear alongside the outfit icon,
 regardless of temperature:
@@ -145,11 +150,11 @@ regardless of temperature:
 - `expectsRain()` checks yr.no's next-hour precipitation amount and its
   condition symbol (rain/sleet/thunder) - if either indicates rain,
   `current.needs_rain_gear` is `true` and an umbrella icon
-  (`clothing-umbrella.png`) is shown.
+  (`clothing-umbrella-<variant>.png`) is shown.
 - `needsWindGear()` checks `current.wind_speed` against
   `WIND_GEAR_THRESHOLD_MS` (8 m/s, roughly Beaufort 5 "fresh breeze") - if
   it's windy enough, `current.needs_wind_gear` is `true` and a windbreaker
-  icon (`clothing-windbreaker.png`) is shown.
+  icon (`clothing-windbreaker-<variant>.png`) is shown.
 
 So up to three icons can appear together: the outfit icon plus either or
 both of the rain/wind gear icons.
@@ -323,6 +328,57 @@ node plugins/weather-yr/generate-clothing-icons.mjs
 
 ## Pixel-art weather icons
 
+`generate-icons.mjs` procedurally draws all of weather-yr's condition icons
+onto a 32x32 boolean grid (bumped up from 16x16 - "less coarse", finer
+pixel-art detail at the same final 128px PNG size) - no external images, no
+licensing concerns. There are 7 condition buckets (`sun`, `partly-cloudy`,
+`cloudy`, `fog`, `rain`, `snow`, `thunder`), and each bucket now has **3
+variants** (`icons/sun-1.png` / `sun-2.png` / `sun-3.png`, etc. - 21 PNGs
+total) with genuinely different silhouettes (different ray counts on the
+sun, different cloud puffiness, different rain/snow/lightning styles) so
+the same condition doesn't always render as the exact same icon.
+
+`fetch.mjs` maps every yr.no `symbol_code` (e.g.
+`lightrainshowersandthunder_day`) to one of these 7 buckets via
+`iconForCode()`; `iconUrl()` then appends a random variant number
+(`ICON_VARIANT_COUNT = 3`, `randomVariant()`) picked fresh on every fetch
+run, so refreshing the plugin can show a different-looking (but same-
+meaning) icon each time - "more icons to randomize from." `icon` (bucket
+name only, no variant) + `icon_url` (full URL, with variant) are set on
+both `current` and each `forecast` day. `template.liquid` shows the icon
+on its own big centered row at the top of the card, and in the 5-day
+forecast table.
+
+The clothing/rain/wind gear icons (`generate-clothing-icons.mjs`) follow
+the exact same pattern - 32x32 grid, 3 variants per item
+(`clothing-<slug>-1.png` etc., 30 PNGs total for the 8 outfit bands +
+umbrella + windbreaker), picked via `clothingIconUrl()`'s own
+`randomVariant()` call - see "Pixelated clothing proposal" above.
+
+**Lesson learned while adding variants**: a variant that only adds a small
+accent (a stripe, a pocket) drawn *inside* an already-solid silhouette
+renders identically to the base variant - the added pixels were already
+black. Confirmed by diffing rendered PNGs (`ImageChops.difference` in
+Python) after the first draft, which caught several variant pairs with
+*zero* pixel difference (e.g. all 3 `warm-jacket` variants were completely
+identical). Every variant now changes the silhouette itself instead -
+longer/shorter sleeves or hemlines, a wider collar cutout, an accessory
+that extends past the base shape's own edge - so the difference is
+structurally guaranteed to be visible rather than hidden inside solid fill.
+If you add a new variant, verify it the same way (diff the rendered PNGs,
+don't just eyeball the drawing code) rather than assuming a pixel-diff of
+zero means "the code has a variant check" is enough.
+
+To tweak or add variants, edit the shape functions in `generate-icons.mjs`
+/ `generate-clothing-icons.mjs` and re-run (`sharp` is required - if it's
+unavailable in your environment, produce PNGs via an equivalent PIL script
+using the exact same grid math, as this repo's own history has done):
+
+```powershell
+node plugins/weather-yr/generate-icons.mjs
+node plugins/weather-yr/generate-clothing-icons.mjs
+```
+
 ## Language: Swedish only
 
 All display text is Swedish: `symbol_map.json` maps every yr.no condition
@@ -334,24 +390,10 @@ etc.) is Swedish. There's no language toggle - if you ever want English
 back, the English originals are in git history for `symbol_map.json` and
 the templates.
 
-`generate-icons.mjs` procedurally draws 7 small black/white pixel-art icons
-(no external images, no licensing concerns) into `icons/*.png`:
-`sun`, `partly-cloudy`, `cloudy`, `fog`, `rain`, `snow`, `thunder`. These
-are static assets committed to git and copied into `public/weather-yr/icons/`
-by the shared workflow (same pattern as the banksy plugin's gallery).
-
-`fetch.mjs` maps every yr.no `symbol_code` (e.g.
-`lightrainshowersandthunder_day`) to one of these 7 buckets via
-`iconForCode()`, and adds `icon` (bucket name) + `icon_url` (full URL) to
-both `current` and each `forecast` day. `template.liquid` shows the icon
-next to the temperature value and in the 5-day forecast table.
-
-To tweak the icon shapes, edit the shape functions in `generate-icons.mjs`
-and re-run:
-
-```powershell
-node plugins/weather-yr/generate-icons.mjs
-```
+(See "Pixel-art weather icons" above for how `generate-icons.mjs` itself
+works - these are static PNGs committed to git and copied into
+`public/weather-yr/icons/` by the shared workflow, same pattern as the
+banksy plugin's gallery.)
 
 ## Font: smooth Inter, not the pixel font
 

@@ -43,6 +43,18 @@ const ICON_BASE_URL = "https://hikmek.github.io/trmnl_plugins/weather-yr/icons";
 // every time the icon files actually change.
 const ICON_VERSION = (process.env.GITHUB_SHA || new Date().toISOString().slice(0, 10)).slice(0, 8);
 
+// Every weather/clothing icon "bucket" (sun, cloudy, jacket, umbrella, ...)
+// now has this many hand-drawn variants (generate-icons.mjs /
+// generate-clothing-icons.mjs, named "<bucket>-1.png".."<bucket>-3.png")
+// instead of a single fixed icon, so the same condition can look a little
+// different on every fetch run rather than always showing the exact same
+// pixel art. Must match VARIANT_COUNT in both of those generator files.
+const ICON_VARIANT_COUNT = 3;
+
+function randomVariant() {
+  return Math.floor(Math.random() * ICON_VARIANT_COUNT) + 1;
+}
+
 // --- Multi-source current temperature -------------------------------------
 // current.temperature is the AVERAGE of whichever of these sources
 // actually respond (yr.no's own reading is always included - it's already
@@ -122,7 +134,7 @@ function clothingForTemperature(tempC) {
 }
 
 function clothingIconUrl(slug) {
-  return `${ICON_BASE_URL}/clothing-${slug}.png?v=${ICON_VERSION}`;
+  return `${ICON_BASE_URL}/clothing-${slug}-${randomVariant()}.png?v=${ICON_VERSION}`;
 }
 
 // Wind gear proposal (shown alongside the temperature-based outfit icon,
@@ -165,7 +177,7 @@ function iconForCode(code) {
 }
 
 function iconUrl(code) {
-  return `${ICON_BASE_URL}/${iconForCode(code)}.png?v=${ICON_VERSION}`;
+  return `${ICON_BASE_URL}/${iconForCode(code)}-${randomVariant()}.png?v=${ICON_VERSION}`;
 }
 
 async function loadSymbolMap() {
@@ -396,9 +408,9 @@ async function main() {
     clothing_icon_url: clothingIconUrl(clothing.slug),
     clothing_text: clothing.text,
     needs_rain_gear: needsRainGear,
-    rain_gear_icon_url: `${ICON_BASE_URL}/clothing-umbrella.png?v=${ICON_VERSION}`,
+    rain_gear_icon_url: clothingIconUrl("umbrella"),
     needs_wind_gear: needsWindGear(nowDetails.wind_speed),
-    wind_gear_icon_url: `${ICON_BASE_URL}/clothing-windbreaker.png?v=${ICON_VERSION}`,
+    wind_gear_icon_url: clothingIconUrl("windbreaker"),
     rain_starts_at: rainStartsAt,
     rain_period_started_at: rainPeriodStartedAt,
     rain_period_ends_at: rainPeriodEndsAt,
