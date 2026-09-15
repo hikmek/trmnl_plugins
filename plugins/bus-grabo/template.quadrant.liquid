@@ -2,10 +2,13 @@
   Paste this into the "Quadrant" tab of the bus-grabo plugin's Edit Markup
   screen (separate from the "Full" tab's template.liquid). Compact version
   for small Mashup panes: each board's icon + ETD + next-departure time,
-  plus a one-line "senast sedd" (last seen) row - always populated once any
-  GPS sighting has ever been recorded, see fetch.mjs's buildLastSeen(). No
-  separate map image here (a Quadrant pane is too narrow for the 480px-wide
-  position map to be legible - that stays on the Full view only).
+  plus a one-line "Senaste position" (last seen) row - a real nearest bus
+  stop name + timestamp, shown even for a sighting from that line running a
+  different direction or route variant, always populated once any GPS
+  sighting has ever been recorded (see fetch.mjs's nearestStopName() and
+  buildLastSeen()). No separate map image here (a Quadrant pane is too
+  narrow for the 480px-wide position map to be legible - that stays on the
+  Full view only).
 
   Same rules as template.liquid: every text line uses "label" so size/font
   stays identical and pixelated throughout; each icon <img> is a single LONE
@@ -30,7 +33,7 @@
   {% else %}
   <div class="label">Ingen avgång</div>
   {% endif %}
-  <div class="label">Senast sedd: {{ mjorn_to_grabo.last_seen.location_text }} ({{ mjorn_to_grabo.last_seen.seen_at_display }})</div>
+  <div class="label">Senaste position: {{ mjorn_to_grabo.last_seen.location_text }} ({{ mjorn_to_grabo.last_seen.seen_at_display }})</div>
 
   <table style="width: 100%; border-collapse: collapse;">
     <tr><td style="border: none; padding: 0; text-align: center;"><img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="64" height="32" style="width: 64px; height: 32px;"></td></tr>
@@ -44,7 +47,7 @@
   {% else %}
   <div class="label">Ingen avgång</div>
   {% endif %}
-  <div class="label">Senast sedd: {{ grabo_to_goteborg.last_seen.location_text }} ({{ grabo_to_goteborg.last_seen.seen_at_display }})</div>
+  <div class="label">Senaste position: {{ grabo_to_goteborg.last_seen.location_text }} ({{ grabo_to_goteborg.last_seen.seen_at_display }})</div>
 </div>
 
 <div class="title_bar">

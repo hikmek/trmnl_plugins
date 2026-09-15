@@ -35,13 +35,15 @@
   cells, which size to their content regardless of the surrounding flex
   layout - so every icon here uses that same single-cell-table wrapper too.
 
-  Bottom section: "denna buss sågs senast vid" (last seen) - one row per
-  board, each repeating that board's own icon plus the most recent GPS
-  sighting we have for that bus and when it was seen (mjorn_to_grabo.
-  last_seen / grabo_to_goteborg.last_seen). Unlike bus_location above (which
-  is often "unknown" between trips), last_seen is designed to always have
-  something to show once any sighting has ever been recorded - see
-  fetch.mjs's buildLastSeen().
+  Bottom section: "Senaste position" (last seen) - one row per board, each
+  repeating that board's own icon plus the nearest real bus stop name
+  (last_seen.location_text - always a place name like "Mjörn" or "Göteborg",
+  never a percentage-along-route figure, and shown even when the sighting
+  is from that line running a different direction or route variant - see
+  fetch.mjs's nearestStopName()) and a timestamp (last_seen.seen_at_display).
+  Unlike bus_location above (which is often "unknown" between trips),
+  last_seen is designed to always have something to show once any sighting
+  has ever been recorded - see fetch.mjs's buildLastSeen().
 {%- endcomment -%}
 
 <div class="layout layout--col gap--medium">
@@ -94,13 +96,13 @@
     <tr><td style="border: none; padding: 0; text-align: center;"><img class="image image--contain image-dither" src="{{ mjorn_to_grabo.icon_url }}" width="64" height="32" style="width: 64px; height: 32px;"></td></tr>
   </table>
   <div class="label">MJÖRN &gt; GRÅBO ({{ mjorn_to_grabo.last_seen.bus_name | default: mjorn_to_grabo.line }})</div>
-  <div class="label">Denna buss sågs senast vid: {{ mjorn_to_grabo.last_seen.location_text }} - {{ mjorn_to_grabo.last_seen.seen_at_display }}</div>
+  <div class="label">Senaste position: {{ mjorn_to_grabo.last_seen.location_text }} - {{ mjorn_to_grabo.last_seen.seen_at_display }}</div>
 
   <table style="width: 100%; border-collapse: collapse;">
     <tr><td style="border: none; padding: 0; text-align: center;"><img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="64" height="32" style="width: 64px; height: 32px;"></td></tr>
   </table>
   <div class="label">GRÅBO &gt; GBG ({{ grabo_to_goteborg.last_seen.bus_name | default: grabo_to_goteborg.line }})</div>
-  <div class="label">Denna buss sågs senast vid: {{ grabo_to_goteborg.last_seen.location_text }} - {{ grabo_to_goteborg.last_seen.seen_at_display }}</div>
+  <div class="label">Senaste position: {{ grabo_to_goteborg.last_seen.location_text }} - {{ grabo_to_goteborg.last_seen.seen_at_display }}</div>
 
 </div>
 

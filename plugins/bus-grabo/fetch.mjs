@@ -163,8 +163,19 @@ async function getAccessToken() {
   return json.access_token;
 }
 
+// IMPORTANT: `timeSpanInMinutes` defaults to just 60 on Västtrafik's side
+// (max 1440/24h) - completely independent of `limit`. This bit us overnight:
+// at 3am, with the next 525/X3 departure not until 5am (120+ min away), the
+// default 60-min window returned zero results no matter how high `limit`
+// was set, so the board showed "no departures" even though one really was
+// scheduled a couple hours out. Always requesting the max 1440 here means a
+// departure is found as long as it's sometime in the next 24h - there's no
+// real downside to asking for the full day since `limit` still caps how
+// many results come back.
+const DEPARTURES_TIME_SPAN_MINUTES = 1440;
+
 async function getDepartures(token, stopAreaGid, limit) {
-  const url = `${API_BASE}/stop-areas/${stopAreaGid}/departures?limit=${limit}`;
+  const url = `${API_BASE}/stop-areas/${stopAreaGid}/departures?limit=${limit}&timeSpanInMinutes=${DEPARTURES_TIME_SPAN_MINUTES}`;
   const res = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) {
     throw new Error(`Västtrafik departures request failed (${stopAreaGid}): ${res.status} ${res.statusText}`);
@@ -398,6 +409,13 @@ function computeRouteProgress(routePoints, busPoint) {
 // hand-typing Göteborg's coordinates.
 const GRABO_WIDE_QUERY = "Nils Ericson Terminalen, Göteborg";
 
+// Friendly display names for the 3 route points, in the same order as
+// ROUTE_STOP_QUERIES - used for nearestStopName() below rather than
+// Västtrafik's full resolved name (which can be a long, formal string like
+// "Sjövik busstation, Lerum, Lerums kommun").
+const ROUTE_STOP_LABELS = ["Sjövik", "Mjörn", "Gråbo"];
+const GRABO_WIDE_LABEL = "Göteborg";
+
 async function resolveRoute(token) {
   const routePoints = [];
   for (const query of ROUTE_STOP_QUERIES) {
@@ -408,6 +426,8 @@ async function resolveRoute(token) {
   // Sjövik and Mjörn (see the module-level NOTE), update this index too.
   const mjornFraction = fractionAtStop(routePoints, 1);
   const graboPoint = routePoints[routePoints.length - 1]; // last entry in ROUTE_STOP_QUERIES
+
+  const namedPoints = routePoints.map((p, i) => ({ name: ROUTE_STOP_LABELS[i] ?? p.name, lat: p.lat, lon: p.lon }));
 
   const lats = routePoints.map((p) => p.lat);
   const lons = routePoints.map((p) => p.lon);
@@ -426,6 +446,7 @@ async function resolveRoute(token) {
   let widePositions = [];
   try {
     const goteborgPoint = await resolveLocation(token, GRABO_WIDE_QUERY);
+    namedPoints.push({ name: GRABO_WIDE_LABEL, lat: goteborgPoint.lat, lon: goteborgPoint.lon });
     const wideLats = [graboPoint.lat, goteborgPoint.lat];
     const wideLons = [graboPoint.lon, goteborgPoint.lon];
     const widePad = 0.05; // generous ~5.5km buffer along the whole Gråbo->Göteborg corridor
@@ -440,7 +461,22 @@ async function resolveRoute(token) {
     console.error("Wide-area X3 position lookup failed - senast sedd for that board may be less reliable:", err);
   }
 
-  return { routePoints, mjornFraction, positions: [...positions, ...widePositions] };
+  return { routePoints, mjornFraction, positions: [...positions, ...widePositions], namedPoints };
+}
+
+// "Senaste position" is a real bus stop name, not a percentage-along-route
+// figure - picks whichever known named point (Sjövik/Mjörn/Gråbo, plus
+// Göteborg when the wide X3 query resolved it) the GPS fix is closest to,
+// however far away that actually is. Deliberately has no "too far, unknown"
+// case - the user wants a place name shown even for a sighting from another
+// route/direction, so this always returns the closest name.
+function nearestStopName(namedPoints, lat, lon) {
+  let best = null;
+  for (const p of namedPoints || []) {
+    const dist = haversineMeters({ lat, lon }, p);
+    if (!best || dist < best.dist) best = { name: p.name, dist };
+  }
+  return best ? best.name : null;
 }
 
 // Finds the live GPS fix for one specific departure (by detailsReference)
@@ -465,15 +501,15 @@ function describeDeparturePosition(route, departure) {
     lat: position.latitude,
     lon: position.longitude,
   });
+  // location_text is always "the nearest known stop name" (see
+  // nearestStopName()) - progress is still nulled out when the fix is
+  // implausibly far from the Sjövik-Gråbo stretch, since that value only
+  // ever feeds the position-map marker, not the text.
+  const location_text = nearestStopName(route.namedPoints, position.latitude, position.longitude);
 
   if (distMeters > MAX_ROUTE_DEVIATION_METERS) {
-    return { bus_name: busName, location_text: "Utanför Sjövik-Gråbo just nu.", progress: null };
+    return { bus_name: busName, location_text, progress: null };
   }
-
-  const location_text =
-    progress < route.mjornFraction
-      ? `Mellan Sjövik och Mjörn (${Math.round(progress * 100)}%)`
-      : `Mellan Mjörn och Gråbo (${Math.round(progress * 100)}%)`;
 
   return { bus_name: busName, location_text, progress };
 }
@@ -524,15 +560,14 @@ function describeAnyLinePosition(route, line) {
     lat: position.latitude,
     lon: position.longitude,
   });
+  // Same "nearest known stop name, always" rule as describeDeparturePosition()
+  // - this is the function most likely to actually hit the off-route/other-
+  // direction case (that's its whole purpose), so it matters most here.
+  const location_text = nearestStopName(route.namedPoints, position.latitude, position.longitude);
 
   if (distMeters > MAX_ROUTE_DEVIATION_METERS) {
-    return { bus_name: busName, location_text: "Utanför Sjövik-Gråbo just nu.", progress: null };
+    return { bus_name: busName, location_text, progress: null };
   }
-
-  const location_text =
-    progress < route.mjornFraction
-      ? `Mellan Sjövik och Mjörn (${Math.round(progress * 100)}%)`
-      : `Mellan Mjörn och Gråbo (${Math.round(progress * 100)}%)`;
 
   return { bus_name: busName, location_text, progress };
 }

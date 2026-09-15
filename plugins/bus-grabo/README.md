@@ -20,10 +20,12 @@ TRMNL private plugin (Polling strategy) showing:
    the two boards) next to an **ETD + next departure** line (both lines run
    roughly hourly, so this is typically "this hour" / "next hour" - see
    "Pixel-art bus icons" below).
-5. **"Denna buss sågs senast vid" (last seen)** - one line per board at the
-   bottom, always showing the most recent real GPS sighting of that bus and
-   when it was seen, even when the board above currently shows "position
-   unknown" between trips (see "Last seen position" below).
+5. **"Senaste position" (last seen)** - one line per board at the bottom,
+   always showing the nearest real bus stop name to that bus's most recent
+   GPS sighting and when it was seen, even when the board above currently
+   shows "position unknown" between trips, and even if the sighting is from
+   that line running a different direction or route variant (see "Last
+   seen position" below).
 
 - Data source: [Västtrafik "Planera Resa" API v4](https://developer.vasttrafik.se/)
 - Requires a **free** Västtrafik developer account + API credentials
@@ -180,15 +182,24 @@ definitions and is what regenerates them if the variant table is ever
 edited by someone who can run Node+`sharp` (locally, or via the workflow's
 own `npm ci`).
 
-## Last seen position ("denna buss sågs senast vid")
+## Last seen position ("Senaste position")
 
 `bus_location` (the field the board itself shows) is often "unknown" -
 it's only populated when the *very next scheduled departure* happens to
 match a live GPS fix *right now*, which is frequently null between trips.
-The bottom-of-board "senast sedd" line is different: it's designed to
+The bottom-of-board "Senaste position" line is different: it's designed to
 **always** have something to show once any sighting has ever been made, by
 persisting the most recent real GPS fix across fetches instead of going
 blank the moment the live match disappears.
+
+`last_seen.location_text` is always a **real bus stop name** (e.g. "Mjörn",
+"Gråbo", "Göteborg") - never a "Mellan X och Y (N%)" percentage-along-route
+figure like an earlier version of this field showed, and never a generic
+"outside the tracked stretch" message either. `nearestStopName()` in
+`fetch.mjs` picks whichever of the known named points (Sjövik/Mjörn/Gråbo,
+plus Göteborg once the wide X3 query below has resolved it) the GPS fix is
+closest to, however far away that actually is - so a sighting from another
+route or direction still gets a real place name instead of "unknown".
 
 Mechanism (`buildLastSeen()` in `fetch.mjs`): on every run, `fetch.mjs`
 looks for a sighting of that board's *line* in this priority order:
@@ -235,6 +246,18 @@ there are a few different possible causes:
    direction. If Västtrafik's actual headsigns don't work that way (e.g.
    showing a via-line name instead of the true endpoint), this filter
    could silently exclude (or include) the wrong trips.
+4. **(Already fixed once, keeping this here for the next time it looks like
+   this) The departures time window was too short.** `GET /departures`
+   defaults to `timeSpanInMinutes=60` **regardless of `limit`** - so at 3am,
+   with the next departure not until 5am, the endpoint returned zero
+   results no matter how high `MJORN_QUERY_LIMIT`/`GRABO_QUERY_LIMIT` were
+   set, and the board showed "Ingen avgång" even though a bus really was
+   scheduled a couple hours out. `getDepartures()` now always requests
+   `timeSpanInMinutes=1440` (the max allowed, 24h), so an overnight gap no
+   longer causes this. If "Ingen avgång" ever comes back for a genuinely
+   scheduled departure more than 24h away (unlikely for an hourly local
+   route, but not impossible around a holiday schedule change), this is the
+   first constant to check.
 
 To tell these apart without guessing, `data.json` includes a
 `debug_raw_departures` field - `{ mjorn: [...], grabo: [...] }`, each item
@@ -330,10 +353,10 @@ this plugin):
     "is_cancelled": false,
     "destination": "Lerum",
     "bus_name": "525 mot Lerum",             // from /positions' "name" field, or null if no live fix matched
-    "bus_location": "Mellan Sjövik och Mjörn (31%)",
+    "bus_location": "Mjörn",                 // nearest known stop name to the live fix, once one is matched
     "last_seen": {                           // always populated once any sighting has ever been made - see "Last seen position" below
       "bus_name": "525 mot Lerum",
-      "location_text": "Mellan Sjövik och Mjörn (31%)",
+      "location_text": "Mjörn",              // always a real stop name (see nearestStopName()), never a percentage
       "seen_at": "2026-09-14T20:16:09.528Z", // null only if no sighting has EVER been recorded (e.g. brand-new deploy)
       "seen_at_display": "14 sep 22:16"
     }
@@ -355,7 +378,7 @@ this plugin):
     "bus_location": "Position okänd (bussen är inte på väg än).",
     "last_seen": {
       "bus_name": "X3 mot Särö",
-      "location_text": "Utanför Sjövik-Gråbo just nu.",
+      "location_text": "Göteborg",           // still a real place name even though this is far from the Sjövik-Gråbo stretch
       "seen_at": "2026-09-14T19:40:02.101Z",
       "seen_at_display": "14 sep 21:40"
     }
@@ -373,14 +396,16 @@ this plugin):
 ```
 
 `bus_location` (per departure) is always a human-readable string, never
-null while `has_departure` is true - it explains what happened even when
-there's no usable fix: `"Position okänd (bussen är inte på väg än)."` (no
-live fix matched that `detailsReference` yet), `"Utanför Sjövik-Gråbo just
-nu."` (matched, but implausibly far from the route - GPS noise or a
-mismatch), or `"Position kunde inte beräknas."` (the route/positions
-lookup itself failed - see `resolveRoute()`'s try/catch in `main()`). The
-map image always renders regardless - worst case, just the three stops
-with no bus markers.
+null while `has_departure` is true. Once a live fix is actually matched to
+that departure, it's the nearest known stop name (`nearestStopName()`) -
+`"Sjövik"`, `"Mjörn"`, `"Gråbo"`, or `"Göteborg"` - regardless of how far
+that fix actually is from the tracked stretch. Only when there's no usable
+fix at all does it fall back to an explanatory message instead of a place
+name: `"Position okänd (bussen är inte på väg än)."` (no live fix matched
+that `detailsReference` yet) or `"Position kunde inte beräknas."` (the
+route/positions lookup itself failed - see `resolveRoute()`'s try/catch in
+`main()`). The map image always renders regardless - worst case, just the
+three stops with no bus markers.
 
 ## Local test
 
