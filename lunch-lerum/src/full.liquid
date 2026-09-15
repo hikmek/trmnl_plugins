@@ -21,95 +21,127 @@ View-only markup: no <div class="screen">/"view"> wrappers needed -
   description underneath (fetch.mjs translates broforce's English
   description via DAGENS_KOCK_DESCRIPTIONS_SV - lunch-lerum-only, does
   not touch broforce's own English Full view).
-  {%- endcomment -%}
 
-  <div class="layout layout--col gap--large">
+  Food icons: a dish can show SEVERAL icons together now (fetch.mjs's
+  iconsForDish() returns every matching keyword, not just the first - e.g.
+  "Fiskgryta med lax och sej" shows a pot + fish + salmon icon), so
+  `*_icon_url` (singular) became `*_icon_urls` (a plural array) everywhere
+  in the data - `today.vegetarian_icon_urls`, `day.lunch_icon_urls`,
+  `day.vegetarian_icon_urls`. Every icon `<img>` sits in its own plain
+  `<table>`/`<td>` cell (not TRMNL's styled table component) rather than
+    as a flex sibling of another `<img>` - a bare row of `<img>` tags gets
+    squashed into a narrow sliver on a real device (see bus-grabo's/
+    weather-yr's READMEs for the fuller story on why), table cells don't
+    have that problem. Icons also use `class="image image--contain
+    image-dither"` now (not just `"image"`) to match the rendering rules
+    those other plugins learned the hard way.
+    {%- endcomment -%}
 
-    <div class="layout layout--row gap--large">
+    <div class="layout layout--col gap--large">
 
-      <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
-        <div class="label">Skolmatn</div>
-        {% if today.is_weekend %}
-        <div class="value" style="text-align: center;">{{ today.note }}</div>
-        {% elsif today.vegetarian %}
-        <div class="value value--large" style="text-align: center;">{{ today.vegetarian }}</div>
-        <img class="image" src="{{ today.vegetarian_icon_url }}" width="48" height="48" style="width: 48px; height: 48px;">
-        {% elsif today.note %}
-        <div class="value" style="text-align: center;">{{ today.note }}</div>
-        {% else %}
-        <div class="value">Ingen vegetarisk rätt idag</div>
-        {% endif %}
-      </div>
+      <div class="layout layout--row gap--large">
 
-      <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
-        <div class="label">Hemmamatn{% if today.hemmamat %} · v{{ today.hemmamat.vecka }}{% endif %}</div>
-        {% if today.hemmamat %}
-        <div class="value" style="text-align: center;">
-          <strong>Lör:</strong> {{ today.hemmamat.lordag.lunch | default: "-" }} / {{ today.hemmamat.lordag.middag | default: "-" }}
+        <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
+          <div class="label">Skolmatn</div>
+          {% if today.is_weekend %}
+          <div class="value" style="text-align: center;">{{ today.note }}</div>
+          {% elsif today.vegetarian %}
+          <div class="value value--large" style="text-align: center;">{{ today.vegetarian }}</div>
+          <table style="border-collapse: collapse; margin: 0 auto;">
+            <tr>
+              {% for icon_url in today.vegetarian_icon_urls %}
+              <td style="border: none; padding: 0 3px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="64" height="64" style="width: 64px; height: 64px;"></td>
+              {% endfor %}
+            </tr>
+          </table>
+          {% elsif today.note %}
+          <div class="value" style="text-align: center;">{{ today.note }}</div>
+          {% else %}
+          <div class="value">Ingen vegetarisk rätt idag</div>
+          {% endif %}
         </div>
-        <div class="value" style="text-align: center;">
-          <strong>Sön:</strong> {{ today.hemmamat.sondag.lunch | default: "-" }} / {{ today.hemmamat.sondag.middag | default: "-" }}
+
+        <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
+          <div class="label">Hemmamatn{% if today.hemmamat %} · v{{ today.hemmamat.vecka }}{% endif %}</div>
+          {% if today.hemmamat %}
+          <div class="value" style="text-align: center;">
+            <strong>Lör:</strong> {{ today.hemmamat.lordag.lunch | default: "-" }} / {{ today.hemmamat.lordag.middag | default: "-" }}
+          </div>
+          <div class="value" style="text-align: center;">
+            <strong>Sön:</strong> {{ today.hemmamat.sondag.lunch | default: "-" }} / {{ today.hemmamat.sondag.middag | default: "-" }}
+          </div>
+          {% else %}
+          <div class="value">Ingen hemmamat inlagd än</div>
+          {% endif %}
         </div>
-        {% else %}
-        <div class="value">Ingen hemmamat inlagd än</div>
-        {% endif %}
+
+        <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
+          <div class="label">Dagens kock:</div>
+          {% if today.dagens_kock %}
+          <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 45%;">
+          <div class="value value--small" style="text-align: center;">{{ today.dagens_kock.name }}</div>
+          <div class="description" style="text-align: center;">{{ today.dagens_kock.description }}</div>
+          {% else %}
+          <div class="value">-</div>
+          {% endif %}
+        </div>
+
       </div>
 
-      <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
-        <div class="label">Dagens kock:</div>
-        {% if today.dagens_kock %}
-        <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 45%;">
-        <div class="value value--small" style="text-align: center;">{{ today.dagens_kock.name }}</div>
-        <div class="description" style="text-align: center;">{{ today.dagens_kock.description }}</div>
-        {% else %}
-        <div class="value">-</div>
-        {% endif %}
-      </div>
+      <div class="divider"></div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Lunch</th>
+            <th>Vegetarian</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in upcoming %}
+          <tr>
+            <td>{{ day.weekday }}{% if day.note %} ({{ day.note }}){% endif %}</td>
+            <td>
+              {% if day.lunch %}
+              <div class="layout layout--col layout--center gap--xsmall">
+                <span style="text-align: center;">{{ day.lunch }}</span>
+                <table style="border-collapse: collapse; margin: 0 auto;">
+                  <tr>
+                    {% for icon_url in day.lunch_icon_urls %}
+                    <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="26" height="26" style="width: 26px; height: 26px;"></td>
+                    {% endfor %}
+                  </tr>
+                </table>
+              </div>
+              {% else %}
+              <span>-</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if day.vegetarian %}
+              <div class="layout layout--col layout--center gap--xsmall">
+                <span style="text-align: center;">{{ day.vegetarian }}</span>
+                <table style="border-collapse: collapse; margin: 0 auto;">
+                  <tr>
+                    {% for icon_url in day.vegetarian_icon_urls %}
+                    <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="26" height="26" style="width: 26px; height: 26px;"></td>
+                    {% endfor %}
+                  </tr>
+                </table>
+              </div>
+              {% else %}
+              <span>-</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
 
     </div>
 
-    <div class="divider"></div>
-
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Day</th>
-          <th>Lunch</th>
-          <th>Vegetarian</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for day in upcoming %}
-        <tr>
-          <td>{{ day.weekday }}{% if day.note %} ({{ day.note }}){% endif %}</td>
-          <td>
-            {% if day.lunch %}
-            <div class="layout layout--col layout--center gap--xsmall">
-              <span style="text-align: center;">{{ day.lunch }}</span>
-              <img class="image" src="{{ day.lunch_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
-            </div>
-            {% else %}
-            <span>-</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if day.vegetarian %}
-            <div class="layout layout--col layout--center gap--xsmall">
-              <span style="text-align: center;">{{ day.vegetarian }}</span>
-              <img class="image" src="{{ day.vegetarian_icon_url }}" width="22" height="22" style="width: 22px; height: 22px;">
-            </div>
-            {% else %}
-            <span>-</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-  </div>
-
-  <div class="title_bar">
-    <span class="title">Matn</span>
-    <span class="instance">{{ updated_display }}</span>
-  </div>
+    <div class="title_bar">
+      <span class="title">Matn</span>
+      <span class="instance">{{ updated_display }}</span>
+    </div>
