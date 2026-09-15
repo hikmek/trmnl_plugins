@@ -101,14 +101,20 @@ async function fetchOpenMeteoTemperature(lat, lon) {
 }
 
 // --- Pixelated clothing proposal --------------------------------------------
-// Picks one outfit icon from the (averaged) current temperature, plus an
-// extra rain-gear icon when rain is expected regardless of temperature.
+// Picks one outfit icon from the (averaged) current temperature, plus extra
+// gear icons (rain, wind) shown alongside it when conditions call for them
+// regardless of temperature. 8 temperature bands now (was 5) for finer-
+// grained recommendations - each needs a matching "clothing-<slug>.png" in
+// icons/ (see generate-clothing-icons.mjs).
 const CLOTHING_BANDS = [
+  { min: 25, slug: "tank-top", text: "Linne & shorts" },
   { min: 20, slug: "shorts-tshirt", text: "T-shirt & shorts" },
-  { min: 12, slug: "tshirt-jacket", text: "T-shirt & tunn jacka" },
-  { min: 5, slug: "jacket", text: "Jacka" },
-  { min: 0, slug: "warm-jacket", text: "Varm jacka & mössa" },
-  { min: -Infinity, slug: "winter-coat", text: "Vinterjacka, mössa & vantar" },
+  { min: 15, slug: "tshirt-jacket", text: "T-shirt & tunn jacka" },
+  { min: 8, slug: "light-jacket", text: "Lätt jacka" },
+  { min: 3, slug: "jacket", text: "Jacka" },
+  { min: -5, slug: "warm-jacket", text: "Varm jacka & mössa" },
+  { min: -15, slug: "winter-coat", text: "Vinterjacka, mössa & vantar" },
+  { min: -Infinity, slug: "extreme-cold", text: "Tjock vinterjacka, mössa, scarf & vantar" },
 ];
 
 function clothingForTemperature(tempC) {
@@ -117,6 +123,16 @@ function clothingForTemperature(tempC) {
 
 function clothingIconUrl(slug) {
   return `${ICON_BASE_URL}/clothing-${slug}.png?v=${ICON_VERSION}`;
+}
+
+// Wind gear proposal (shown alongside the temperature-based outfit icon,
+// same pattern as expectsRain()/needs_rain_gear below): proposed once wind
+// speed crosses into "fresh breeze" territory (Beaufort 5, ~8 m/s) - windy
+// enough that a windbreaker is worth calling out regardless of temperature.
+const WIND_GEAR_THRESHOLD_MS = 8;
+
+function needsWindGear(windSpeedMs) {
+  return typeof windSpeedMs === "number" && windSpeedMs >= WIND_GEAR_THRESHOLD_MS;
 }
 
 // Rain gear is proposed both when yr.no already has a nonzero precipitation
@@ -381,6 +397,8 @@ async function main() {
     clothing_text: clothing.text,
     needs_rain_gear: needsRainGear,
     rain_gear_icon_url: `${ICON_BASE_URL}/clothing-umbrella.png?v=${ICON_VERSION}`,
+    needs_wind_gear: needsWindGear(nowDetails.wind_speed),
+    wind_gear_icon_url: `${ICON_BASE_URL}/clothing-windbreaker.png?v=${ICON_VERSION}`,
     rain_starts_at: rainStartsAt,
     rain_period_started_at: rainPeriodStartedAt,
     rain_period_ends_at: rainPeriodEndsAt,

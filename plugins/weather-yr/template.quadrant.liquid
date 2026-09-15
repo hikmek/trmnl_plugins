@@ -22,14 +22,15 @@
   temperature value; icons only ever share a row with OTHER icons (narrow),
   never with value/text content.
 
-  Layout: weather icon + clothing/rain icon(s) together in one icon-only
-  row on top (sized big enough to actually read at a glance - 44px, up
-  from an earlier too-small 28px that made them hard to tell apart), then
-  the temperature alone on its own row, then text labels below. The
-  temperature keeps a real TRMNL value--* class (value--base) rather than
-  a custom inline font-size - an arbitrary font-size outside TRMNL's own
-  pixel/bitmap-font size set corrupted the digits in earlier testing.
-  44px x up to 3 icons + gaps is still comfortably narrower than the
+  Layout: weather icon + clothing/rain/wind icon(s) together in one
+  icon-only row on top (sized big enough to actually read at a glance -
+  44px, up from an earlier too-small 28px that made them hard to tell
+  apart), then the temperature alone on its own row, then text labels
+  below. The temperature keeps a real TRMNL value--* class (value--base)
+  rather than a custom inline font-size - an arbitrary font-size outside
+  TRMNL's own pixel/bitmap-font size set corrupted the digits in earlier
+  testing. 44px x up to 4 icons (weather + clothing + optional rain gear +
+  optional wind gear) + gaps is still comfortably narrower than the
   "H xx.x / L xx.x" text row below, which has always rendered fine, so
   this shouldn't reintroduce the row-overflow issue described above.
 
@@ -60,6 +61,9 @@
       <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ current.clothing_icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
       {% if current.needs_rain_gear %}
       <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ current.rain_gear_icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+      {% endif %}
+      {% if current.needs_wind_gear %}
+      <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ current.wind_gear_icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
       {% endif %}
     </tr>
   </table>

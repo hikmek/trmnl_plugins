@@ -53,6 +53,17 @@ function halfCircleTop(g, cx, cy, r, val = true) {
 }
 
 const ICONS = {
+  // Very hot: sleeveless tank top (thin straps, no sleeve blocks) + shorts.
+  "tank-top": () => {
+    const g = create2D(GRID);
+    rect(g, 3, 8, 5, 10); // torso, sleeveless
+    rect(g, 2, 3, 6, 6); // left strap
+    rect(g, 2, 3, 9, 9); // right strap
+    rect(g, 2, 2, 7, 8, false); // collar notch
+    rect(g, 9, 13, 5, 10); // shorts block
+    rect(g, 12, 13, 7, 8, false); // leg split
+    return g;
+  },
   // Hot weather: t-shirt + shorts, with a small leg-split gap at the hem.
   "shorts-tshirt": () => {
     const g = create2D(GRID);
@@ -72,6 +83,17 @@ const ICONS = {
     rect(g, 2, 4, 12, 13);
     rect(g, 2, 2, 7, 8, false); // collar notch
     rect(g, 8, 9, 7, 8, false); // open hem
+    return g;
+  },
+  // Cool-mild gap between tshirt-jacket and a full closed jacket: taller
+  // and longer-sleeved than tshirt-jacket, but still open at the hem.
+  "light-jacket": () => {
+    const g = create2D(GRID);
+    rect(g, 2, 11, 4, 11);
+    rect(g, 2, 5, 2, 3);
+    rect(g, 2, 5, 12, 13);
+    rect(g, 2, 2, 7, 8, false); // collar notch
+    rect(g, 10, 11, 7, 8, false); // open hem
     return g;
   },
   // Cool weather: closed, taller jacket.
@@ -103,6 +125,22 @@ const ICONS = {
     rect(g, 4, 5, 2, 13);
     return g;
   },
+  // Extreme cold: winter-coat plus mittens poking past the cuffs and a
+  // pair of boots at the hem - visually distinct at a glance from
+  // winter-coat, not just a relabeling of the same silhouette.
+  "extreme-cold": () => {
+    const g = create2D(GRID);
+    rect(g, 5, 14, 3, 12);
+    rect(g, 5, 9, 1, 2);
+    rect(g, 5, 9, 13, 14);
+    halfCircleTop(g, 7.5, 3, 3.6);
+    rect(g, 4, 5, 2, 13); // scarf band
+    rect(g, 9, 10, 0, 1); // left mitten past the cuff
+    rect(g, 9, 10, 14, 15); // right mitten past the cuff
+    rect(g, 14, 15, 4, 6); // left boot
+    rect(g, 14, 15, 9, 11); // right boot
+    return g;
+  },
   // Rain gear proposal (shown alongside the temperature-based outfit icon
   // whenever fetch.mjs's expectsRain() is true): a simple umbrella.
   umbrella: () => {
@@ -111,6 +149,24 @@ const ICONS = {
     rect(g, 7, 12, 7, 7);
     rect(g, 13, 13, 7, 8);
     rect(g, 14, 14, 8, 9);
+    return g;
+  },
+  // Wind gear proposal (shown alongside the outfit icon whenever
+  // fetch.mjs's needsWindGear() is true): a light jacket silhouette with a
+  // few short streaks beside it suggesting gusts - visually distinct from
+  // the plain jacket/light-jacket icons so it reads as "windy", not just
+  // "another jacket band".
+  windbreaker: () => {
+    const g = create2D(GRID);
+    rect(g, 3, 12, 5, 10); // jacket body
+    rect(g, 3, 6, 3, 4); // left sleeve
+    rect(g, 3, 6, 11, 12); // right sleeve
+    rect(g, 3, 3, 7, 8, false); // collar notch
+    rect(g, 11, 12, 7, 8, false); // open hem
+    // wind streaks (gusts blowing past, to the left of the jacket)
+    rect(g, 4, 4, 0, 2);
+    rect(g, 7, 7, 0, 3);
+    rect(g, 10, 10, 0, 1);
     return g;
   },
 };
