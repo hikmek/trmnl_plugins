@@ -163,25 +163,48 @@ async function getAccessToken() {
   return json.access_token;
 }
 
-// IMPORTANT: `timeSpanInMinutes` defaults to just 60 on Västtrafik's side
-// (max 1440/24h) - completely independent of `limit`. This bit us overnight:
-// at 3am, with the next 525/X3 departure not until 5am (120+ min away), the
-// default 60-min window returned zero results no matter how high `limit`
-// was set, so the board showed "no departures" even though one really was
-// scheduled a couple hours out. Always requesting the max 1440 here means a
-// departure is found as long as it's sometime in the next 24h - there's no
-// real downside to asking for the full day since `limit` still caps how
-// many results come back.
-const DEPARTURES_TIME_SPAN_MINUTES = 1440;
+// IMPORTANT: `timeSpanInMinutes` defaults to just 60 on Västtrafik's side -
+// completely independent of `limit`. This bit us overnight: at 3am, with
+// the next 525/X3 departure not until 5am (120+ min away), the default
+// 60-min window returned zero results no matter how high `limit` was set,
+// so the board showed "no departures" even though one really was scheduled
+// a couple hours out.
+//
+// Västtrafik's own mirrored docs say the allowed range is "between 0 and
+// 1440" (1440 = 24h), but a live request with exactly 1440 came back
+// `400 Bad Request` (see git log) - so the real upper bound is apparently
+// stricter than documented, or documented as inclusive but enforced as
+// exclusive. Rather than gamble on the exact undocumented boundary, this
+// tries a descending list of candidate values and steps down to the next
+// one ONLY on a 400 (any other status is a different problem and is
+// thrown immediately, same as before) - logging the response body each
+// time so a future failure here is actually diagnosable from the Actions
+// log instead of a bare "400 Bad Request". 60 (Västtrafik's own default)
+// is always last, since that's guaranteed to work - worst case, this
+// degrades back to the original overnight-gap bug rather than failing the
+// whole fetch.
+const DEPARTURES_TIME_SPAN_CANDIDATES = [1439, 1000, 720, 360, 180, 60];
 
 async function getDepartures(token, stopAreaGid, limit) {
-  const url = `${API_BASE}/stop-areas/${stopAreaGid}/departures?limit=${limit}&timeSpanInMinutes=${DEPARTURES_TIME_SPAN_MINUTES}`;
-  const res = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) {
-    throw new Error(`Västtrafik departures request failed (${stopAreaGid}): ${res.status} ${res.statusText}`);
+  let lastErr;
+  for (const timeSpanInMinutes of DEPARTURES_TIME_SPAN_CANDIDATES) {
+    const url = `${API_BASE}/stop-areas/${stopAreaGid}/departures?limit=${limit}&timeSpanInMinutes=${timeSpanInMinutes}`;
+    const res = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) {
+      if (timeSpanInMinutes !== DEPARTURES_TIME_SPAN_CANDIDATES[0]) {
+        console.error(`Note: timeSpanInMinutes=${timeSpanInMinutes} worked for ${stopAreaGid} after a larger value was rejected - consider updating DEPARTURES_TIME_SPAN_CANDIDATES.`);
+      }
+      const json = await res.json();
+      return json.results || [];
+    }
+    const bodyText = await res.text().catch(() => "");
+    lastErr = new Error(
+      `Västtrafik departures request failed (${stopAreaGid}, timeSpanInMinutes=${timeSpanInMinutes}): ${res.status} ${res.statusText}${bodyText ? ` - ${bodyText}` : ""}`
+    );
+    if (res.status !== 400) break; // only degrade the time span on a 400 - anything else is a different problem, don't mask it
+    console.error(`${lastErr.message} - retrying with a smaller timeSpanInMinutes`);
   }
-  const json = await res.json();
-  return json.results || [];
+  throw lastErr;
 }
 
 // GET /locations/by-text - resolves a place name to Västtrafik's own

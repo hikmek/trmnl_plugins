@@ -246,18 +246,28 @@ there are a few different possible causes:
    direction. If Västtrafik's actual headsigns don't work that way (e.g.
    showing a via-line name instead of the true endpoint), this filter
    could silently exclude (or include) the wrong trips.
-4. **(Already fixed once, keeping this here for the next time it looks like
-   this) The departures time window was too short.** `GET /departures`
+4. **(Already fixed twice, keeping this here for the next time it looks
+   like this) The departures time window was too short.** `GET /departures`
    defaults to `timeSpanInMinutes=60` **regardless of `limit`** - so at 3am,
    with the next departure not until 5am, the endpoint returned zero
    results no matter how high `MJORN_QUERY_LIMIT`/`GRABO_QUERY_LIMIT` were
    set, and the board showed "Ingen avgång" even though a bus really was
-   scheduled a couple hours out. `getDepartures()` now always requests
-   `timeSpanInMinutes=1440` (the max allowed, 24h), so an overnight gap no
-   longer causes this. If "Ingen avgång" ever comes back for a genuinely
-   scheduled departure more than 24h away (unlikely for an hourly local
-   route, but not impossible around a holiday schedule change), this is the
-   first constant to check.
+   scheduled a couple hours out. The first fix (requesting a flat
+   `timeSpanInMinutes=1440`, the documented max) actually broke the fetch
+   entirely instead - Västtrafik's own docs say the allowed range is
+   "between 0 and 1440", but a live request with exactly `1440` came back
+   `400 Bad Request` (real API behavior stricter than documented, or an
+   inclusive/exclusive mismatch in the docs). `getDepartures()` now tries a
+   *descending* list of candidate values (`DEPARTURES_TIME_SPAN_CANDIDATES`
+   - currently `[1439, 1000, 720, 360, 180, 60]`) and only steps down to the
+   next one on a `400` specifically, logging the response body each time -
+   any other status is thrown immediately rather than masked. `60`
+   (Västtrafik's own original default) is always the last candidate, so
+   this can never regress to a hard failure - worst case it silently falls
+   back to the original overnight-gap bug. If Actions logs ever show a
+   "Note: timeSpanInMinutes=N worked... after a larger value was rejected"
+   message, that confirms a real hard cap below 1439 and the candidate list
+   should be updated to start at (or just below) whatever `N` is.
 
 To tell these apart without guessing, `data.json` includes a
 `debug_raw_departures` field - `{ mjorn: [...], grabo: [...] }`, each item
