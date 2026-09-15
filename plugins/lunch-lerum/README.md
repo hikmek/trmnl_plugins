@@ -167,6 +167,22 @@ keyword matches, `iconsForDish()` falls back to `["generic"]` rather than
 an empty array (an empty array only happens when there's no dish at all
 that day).
 
+Every icon `<table>` block is guarded with `{% if x_icon_urls.size > 0 %}` before
+it renders. This isn't just cosmetic: `shouldSkipDailyFetch()` in
+`lib/throttle.mjs` means a code change to `fetch.mjs` does **not**
+retroactively update a `data.json` that's already published for today's
+calendar date - so there's always a transition window (until the next
+calendar-day rollover, or a manual `workflow_dispatch` run, which sets
+`FORCE_FETCH=true` and bypasses the throttle) where a newly-pasted
+template can be polling **stale data still using the old schema**. If a
+template's `{% for %}` loop iterates a field that doesn't exist yet, it
+silently produces zero cells - fine on its own - but this project
+previously hit a case where an unguarded `<table><tr>` left with **zero**
+`<td>` children (because the array field didn't exist in the stale JSON
+yet) blanked TRMNL's entire render, not just that one icon row. The
+`.size > 0` guard skips the whole `<table>` in that situation instead of
+emitting a malformed empty one.
+
 Each icon `<img>` is rendered inside its own plain `<table>`/`<td>` cell
 (not TRMNL's styled table component, and not a bare flex row of `<img>`
 siblings) - a bare row of `<img>` tags gets squashed into a narrow

@@ -47,6 +47,7 @@
       <div class="value" style="text-align: center;">{{ today.note }}</div>
       {% elsif today.vegetarian %}
       <div class="value value--large" style="text-align: center;">{{ today.vegetarian }}</div>
+      {% if today.vegetarian_icon_urls.size > 0 %}
       <table style="border-collapse: collapse; margin: 0 auto;">
         <tr>
           {% for icon_url in today.vegetarian_icon_urls %}
@@ -54,6 +55,7 @@
           {% endfor %}
         </tr>
       </table>
+      {% endif %}
       {% elsif today.note %}
       <div class="value" style="text-align: center;">{{ today.note }}</div>
       {% else %}
@@ -106,6 +108,7 @@
           {% if day.lunch %}
           <div class="layout layout--col layout--center gap--xsmall">
             <span style="text-align: center;">{{ day.lunch }}</span>
+            {% if day.lunch_icon_urls.size > 0 %}
             <table style="border-collapse: collapse; margin: 0 auto;">
               <tr>
                 {% for icon_url in day.lunch_icon_urls %}
@@ -113,6 +116,7 @@
                 {% endfor %}
               </tr>
             </table>
+            {% endif %}
           </div>
           {% else %}
           <span>-</span>
@@ -122,6 +126,7 @@
           {% if day.vegetarian %}
           <div class="layout layout--col layout--center gap--xsmall">
             <span style="text-align: center;">{{ day.vegetarian }}</span>
+            {% if day.vegetarian_icon_urls.size > 0 %}
             <table style="border-collapse: collapse; margin: 0 auto;">
               <tr>
                 {% for icon_url in day.vegetarian_icon_urls %}
@@ -129,6 +134,7 @@
                 {% endfor %}
               </tr>
             </table>
+            {% endif %}
           </div>
           {% else %}
           <span>-</span>
