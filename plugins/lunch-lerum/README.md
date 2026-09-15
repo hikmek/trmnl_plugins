@@ -190,8 +190,25 @@ sliver on a real device, table cells render each icon at full size
 instead (same lesson learned in bus-grabo/weather-yr). In
 `template.quadrant.liquid` this icon row sits centered at the very
 **top** of the pane, above the dish text, and the icons are bigger
-(60px). In `template.liquid` the icons sit below the dish text (Skolmatn
-column: 64px; upcoming-days forecast table: 26px each).
+(44px, up from the original 32px). In `template.liquid` the icons sit
+below the dish text (Skolmatn column: 64px; upcoming-days forecast
+table: 26px each) - the Full view has room to spare, so it isn't
+height-constrained the way Quadrant is.
+
+**Quadrant is a fixed, non-scrolling pane** - a first attempt at 60px
+icons pushed the dish text and the whole "Dagens kock" column off the
+visible area entirely (the icons showed, everything below them just
+vanished, with no partial cut-off - the renderer appears to crop
+whatever doesn't fit rather than shrink or scroll it). 44px was chosen
+as the biggest size that leaves room for the rest of the pane's content;
+if you make icons bigger again, expect to also shrink something else
+below them (text column width/gap, Dagens kock's photo height, its
+description's truncate length) to compensate, and re-check the real
+device rather than assuming it fits. The dish text also has a generous
+70-character truncate as a safety net for this same reason - every dish
+in the current term (~63 chars max) fits well under it, so it's not
+visible in practice, but an unbounded name could in principle wrap
+enough lines to push content off-pane the same way the icons did.
 
 To add more dishes/categories: add a `{ pattern: /keyword/i, icon: "name" }`
 entry to `FOOD_ICON_KEYWORDS` in `fetch.mjs`, draw a matching shape
