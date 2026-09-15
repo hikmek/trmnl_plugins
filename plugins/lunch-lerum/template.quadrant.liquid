@@ -13,11 +13,25 @@
   mentioned, instead of a single generic icon). 44px (not 60px) because
   this pane has a fixed, non-scrolling height: an earlier 60px version
   pushed the dish text + Dagens kock column entirely out of the visible
-  area (icons showed, everything below them vanished). The text column
-  also got proportionally wider (flex: 1.4 vs Dagens kock's flex: 1),
-  the row gap shrank (gap--large -> gap--small), and the Dagens kock
-  photo/description shrank (34% max-height, 30-char description) to give
-  the now-bigger icon row room without pushing the rest off-pane.
+  area (icons showed, everything below them vanished). The Dagens kock
+  photo/description also shrank (34% max-height, 30-char description) to
+  give the now-bigger icon row room without pushing the rest off-pane.
+
+  CAUTION - keep the text/Dagens kock row's flex values as plain integers
+  (flex: 1) and its gap a named class (gap--large), not a decimal
+  (flex: 1.4) or a smaller named gap. A version of this file that used
+  flex: 1.4 + gap--small passed every check possible in this sandbox
+  (tag balance, structure) but came out completely broken on the real
+  device: the dish text and Dagens kock photo collapsed into one narrow
+  vertical sliver, with the text wrapped one character per line, instead
+  of the normal two side-by-side columns. The decimal flex value is the
+  prime suspect (TRMNL's real renderer may not handle a non-integer
+  flex-grow the way a normal browser would) but this wasn't isolated
+  before reverting both changes at once, since another broken round-trip
+  costs real device-testing time - if the icon-size overflow ever needs
+  more room again, prefer shrinking the Dagens kock column further over
+  touching these two values, and test on the actual device before
+  trusting any change here.
 
   Each icon <img> lives in its own plain <table>/<td> cell (not TRMNL's
   styled table component, and not a bare flex row) - same rule as
@@ -84,8 +98,8 @@
   </table>
   {% endif %}
 
-  <div class="layout layout--row gap--small">
-    <div class="layout layout--col layout--center gap--xsmall" style="flex: 1.4;">
+  <div class="layout layout--row gap--large">
+    <div class="layout layout--col layout--center gap--xsmall" style="flex: 1;">
       {% if today.lunch %}
       <div class="label">Dagens Lunch</div>
       <div class="description" style="text-align: center;">{{ today.lunch | truncate: 70 }}</div>

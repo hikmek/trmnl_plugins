@@ -202,9 +202,27 @@ vanished, with no partial cut-off - the renderer appears to crop
 whatever doesn't fit rather than shrink or scroll it). 44px was chosen
 as the biggest size that leaves room for the rest of the pane's content;
 if you make icons bigger again, expect to also shrink something else
-below them (text column width/gap, Dagens kock's photo height, its
-description's truncate length) to compensate, and re-check the real
-device rather than assuming it fits. The dish text also has a generous
+below them (Dagens kock's photo height, its description's truncate
+length) to compensate, and re-check the real device rather than
+assuming it fits.
+
+**Do not give the text/Dagens kock row's flex a decimal value (e.g.
+`flex: 1.4`) or shrink its gap below `gap--large`, even though that
+would reclaim more width for long dish names.** That combination was
+tried once to fix the overflow above and looked fine by every check
+possible without the real device (tag balance, structure review), but
+on the actual TRMNL screen the two columns collapsed into one narrow
+vertical sliver - the dish text wrapped one character per line and the
+Dagens kock photo shrank into a thin strip, instead of the normal two
+side-by-side columns. The decimal `flex` value is the prime suspect
+(TRMNL's real renderer may not handle a non-integer flex-grow the way a
+normal browser does), but it wasn't isolated from the gap change before
+reverting both, since every round-trip here costs real device-testing
+time. Both values are back to their original, proven state (`flex: 1`,
+`gap--large`); if the layout ever needs to reclaim more room, prefer
+shrinking the Dagens kock column further over touching these two.
+
+The dish text also has a generous
 70-character truncate as a safety net for this same reason - every dish
 in the current term (~63 chars max) fits well under it, so it's not
 visible in practice, but an unbounded name could in principle wrap
