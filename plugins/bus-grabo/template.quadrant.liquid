@@ -1,53 +1,77 @@
 {%- comment -%}
   Paste this into the "Quadrant" tab of the bus-grabo plugin's Edit Markup
   screen (separate from the "Full" tab's template.liquid). Compact version
-  for small Mashup panes: each board's icon + ETD + next-departure time,
-  plus a one-line "Senaste position" (last seen) row - a real nearest bus
-  stop name + timestamp, shown even for a sighting from that line running a
-  different direction or route variant, always populated once any GPS
-  sighting has ever been recorded (see fetch.mjs's nearestStopName() and
-  buildLastSeen()). No separate map image here (a Quadrant pane is too
-  narrow for the 480px-wide position map to be legible - that stays on the
-  Full view only).
+  for small Mashup panes: each board gets one row with its icon on the left
+  (framing the two departure lines like a small departure board) + line/time
+  for ETD and Nästa, plus a one-line "Senaste position" (last seen) row - a
+  real nearest bus stop name + timestamp, shown even for a sighting from
+  that line running a different direction or route variant, always
+  populated once any GPS sighting has ever been recorded (see fetch.mjs's
+  nearestStopName() and buildLastSeen()). No separate map image here (a
+  Quadrant pane is too narrow for the 480px-wide position map to be legible
+  - that stays on the Full view only).
+
+  Icon direction: see template.liquid's comment - icons are drawn nose-first
+  towards the right, so placed at the left edge they read as driving into
+  the departure lines next to them.
 
   Same rules as template.liquid: every text line uses "label" so size/font
   stays identical and pixelated throughout; each icon <img> is a single LONE
-  <img> in its own row - never a flex sibling of another <img>; and each
-  icon <img> sits inside its own single-cell <table><td> (not a bare
-  <div class="layout layout--row">) - a bare flex-row wrapper let the
-  surrounding layout stretch the icon into a tall narrow sliver instead of
-  its real landscape shape on a real device, table cells don't have that
-  problem (see template.liquid's comment for the fuller explanation).
+  <img>, sitting inside its own table cell (plain <table>/<td>, not TRMNL's
+  styled table component) - a bare <div class="layout layout--row"> wrapper
+  let the surrounding layout stretch an icon into a tall narrow sliver
+  instead of its real landscape shape on a real device, table cells don't
+  have that problem.
 {%- endcomment -%}
 
 <div class="layout layout--col gap--small">
-  <table style="width: 100%; border-collapse: collapse;">
-    <tr><td style="border: none; padding: 0; text-align: center;"><img class="image image--contain image-dither" src="{{ mjorn_to_grabo.icon_url }}" width="64" height="32" style="width: 64px; height: 32px;"></td></tr>
-  </table>
-  <div class="label">MJÖRN &gt; GRÅBO</div>
-  {% if mjorn_to_grabo.has_departure %}
-  <div class="label">ETD: {{ mjorn_to_grabo.estimated_time }}{% if mjorn_to_grabo.delay_minutes > 0 %} (+{{ mjorn_to_grabo.delay_minutes }}){% endif %}</div>
-  {% if mjorn_to_grabo.next_departure_time %}
-  <div class="label">Nästa: {{ mjorn_to_grabo.next_departure_time }}</div>
-  {% endif %}
-  {% else %}
-  <div class="label">Ingen avgång</div>
-  {% endif %}
-  <div class="label">Senaste position: {{ mjorn_to_grabo.last_seen.location_text }} ({{ mjorn_to_grabo.last_seen.seen_at_display }})</div>
 
   <table style="width: 100%; border-collapse: collapse;">
-    <tr><td style="border: none; padding: 0; text-align: center;"><img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="64" height="32" style="width: 64px; height: 32px;"></td></tr>
+    <tr>
+      <td rowspan="2" style="width: 48px; border: none; padding: 0 6px 0 0; text-align: center; vertical-align: middle;">
+        <img class="image image--contain image-dither" src="{{ mjorn_to_grabo.icon_url }}" width="44" height="22" style="width: 44px; height: 22px;">
+      </td>
+      <td colspan="2" style="border: none; padding: 0; text-align: left;"><div class="label">MJÖRN &gt; GRÅBO</div></td>
+    </tr>
+    <tr>
+      {% if mjorn_to_grabo.has_departure %}
+      <td style="border: 1px solid #000; padding: 1px 6px; text-align: center;"><div class="label">{{ mjorn_to_grabo.estimated_time }}{% if mjorn_to_grabo.delay_minutes > 0 %} (+{{ mjorn_to_grabo.delay_minutes }}){% endif %}</div></td>
+      {% if mjorn_to_grabo.next_departure_time %}
+      <td style="border: 1px solid #000; padding: 1px 6px; text-align: center;"><div class="label">{{ mjorn_to_grabo.next_departure_time }}</div></td>
+      {% else %}
+      <td style="border: none;"></td>
+      {% endif %}
+      {% else %}
+      <td colspan="2" style="border: none; padding: 1px 6px; text-align: center;"><div class="label">Ingen avgång</div></td>
+      {% endif %}
+    </tr>
   </table>
-  <div class="label">GRÅBO &gt; GÖTEBORG</div>
-  {% if grabo_to_goteborg.has_departure %}
-  <div class="label">ETD: {{ grabo_to_goteborg.estimated_time }}{% if grabo_to_goteborg.delay_minutes > 0 %} (+{{ grabo_to_goteborg.delay_minutes }}){% endif %}</div>
-  {% if grabo_to_goteborg.next_departure_time %}
-  <div class="label">Nästa: {{ grabo_to_goteborg.next_departure_time }}</div>
-  {% endif %}
-  {% else %}
-  <div class="label">Ingen avgång</div>
-  {% endif %}
+  <div class="label">Senaste position: {{ mjorn_to_grabo.last_seen.location_text }} ({{ mjorn_to_grabo.last_seen.seen_at_display }})</div>
+
+  <div class="divider"></div>
+
+  <table style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td rowspan="2" style="width: 48px; border: none; padding: 0 6px 0 0; text-align: center; vertical-align: middle;">
+        <img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="44" height="22" style="width: 44px; height: 22px;">
+      </td>
+      <td colspan="2" style="border: none; padding: 0; text-align: left;"><div class="label">GRÅBO &gt; GÖTEBORG</div></td>
+    </tr>
+    <tr>
+      {% if grabo_to_goteborg.has_departure %}
+      <td style="border: 1px solid #000; padding: 1px 6px; text-align: center;"><div class="label">{{ grabo_to_goteborg.estimated_time }}{% if grabo_to_goteborg.delay_minutes > 0 %} (+{{ grabo_to_goteborg.delay_minutes }}){% endif %}</div></td>
+      {% if grabo_to_goteborg.next_departure_time %}
+      <td style="border: 1px solid #000; padding: 1px 6px; text-align: center;"><div class="label">{{ grabo_to_goteborg.next_departure_time }}</div></td>
+      {% else %}
+      <td style="border: none;"></td>
+      {% endif %}
+      {% else %}
+      <td colspan="2" style="border: none; padding: 1px 6px; text-align: center;"><div class="label">Ingen avgång</div></td>
+      {% endif %}
+    </tr>
+  </table>
   <div class="label">Senaste position: {{ grabo_to_goteborg.last_seen.location_text }} ({{ grabo_to_goteborg.last_seen.seen_at_display }})</div>
+
 </div>
 
 <div class="title_bar">

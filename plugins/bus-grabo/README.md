@@ -15,11 +15,12 @@ TRMNL private plugin (Polling strategy) showing:
    using real GPS (see below). The two boards are **not the same physical
    bus** - line 525 terminates in Lerum and line X3 starts fresh at Gråbo,
    they only meet at the Gråbo stop where a rider would change buses.
-4. **A pixel-art bus icon per board** (picked at random every fetch from 30
-   pre-generated vintage-styled silhouettes, guaranteed different between
-   the two boards) next to an **ETD + next departure** line (both lines run
-   roughly hourly, so this is typically "this hour" / "next hour" - see
-   "Pixel-art bus icons" below).
+4. **A departure-board grid** - line badge + boxed time + destination, one
+   row for the ETD and one for the following scheduled departure (both
+   lines run roughly hourly, so this is typically "this hour" / "next hour")
+   - framed left/right by a pixel-art bus icon per board (picked at random
+   every fetch from 30 pre-generated vintage-styled silhouettes, guaranteed
+   different between the two boards - see "Pixel-art bus icons" below).
 5. **"Senaste position" (last seen)** - one line per board at the bottom,
    always showing the nearest real bus stop name to that bus's most recent
    GPS sighting and when it was seen, even when the board above currently
@@ -161,6 +162,17 @@ there's no meaningful visual difference between "a generic 1950s coach" and
 any specific real model, so the names are just flavor for an otherwise
 procedurally-varied shape (deck count, nose style, roof style, window
 count, roof vent, side stripe, open rear platform).
+
+**Facing direction:** `buildBus()` draws the nose/hood on the LEFT side of
+the grid (columns `0..noseW`) and any open rear platform on the right, so
+the shape comes out of `buildBus()` facing left. Every icon is mirrored
+horizontally before being saved (`.flop()` in `generate-bus-icons.mjs`'s
+`sharp` pipeline; `Image.FLIP_LEFT_RIGHT` in the Python port that produced
+the committed files - see "How the files were generated" below), so the
+nose ends up on the right and the bus reads as driving forward/into
+whatever is to its right - which is how the templates place them (see
+"Markup style" below). An earlier version skipped this and the buses
+looked like they were driving backwards.
 
 `fetch.mjs`'s `pickTwoDistinctIcons()` picks 2 of the 30 at random on every
 fetch - one per board (`mjorn_to_grabo.icon_url` / `grabo_to_goteborg.
@@ -309,39 +321,45 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
 - Refresh rate: 5-15 min (bus departures change faster than weather/lunch -
   consider lowering the workflow's cron interval too if you want tighter
   real-time accuracy)
-- Markup (Full tab): paste `template.liquid`
-- Markup (Quadrant tab): paste `template.quadrant.liquid` - includes each
-  board's icon + ETD + next-departure line, and a compact "senast sedd"
-  line too (no map image - too wide for a Quadrant pane), not just the Full
-  view
+- Markup (Full tab): paste `template.liquid` - a departure-board grid (line
+  + boxed time + destination, one row per upcoming departure) for each
+  board, framed left/right by that board's own bus icon
+- Markup (Quadrant tab): paste `template.quadrant.liquid` - a more compact
+  version of the same grid idea (icon + line/time rows), plus a "Senaste
+  position" line, not just the Full view
 
-## Markup style: plain lines, not a table (except for icons)
+## Markup style: "label" for text, plain `<table>` for layout/icons
 
-Both templates avoid TRMNL's `table` component for text and use one
-`<div class="label">` per line instead - for headers and countdowns alike.
-TRMNL maps the "label" component to a single pixel font (NicoClean /
-TRMNL16, whichever bundle is active) at one fixed size on real e-ink
-devices, so reusing it everywhere guarantees identical, pixelated text
-throughout instead of mixing table header/cell fonts with value fonts of
-different sizes.
+Every piece of TEXT uses `<div class="label">` - for headers, times,
+destinations and countdowns alike, never TRMNL's own styled `table`
+component. TRMNL maps the "label" component to a single pixel font
+(NicoClean / TRMNL16, whichever bundle is active) at one fixed size on real
+e-ink devices, so reusing it everywhere guarantees identical, pixelated
+text throughout instead of mixing a table component's own header/cell
+fonts with value fonts of different sizes.
 
-**Every `<img>` is the deliberate exception**, and needs two rules learned
-the hard way (both originally from weather-yr, the second one specific to
-this plugin):
+**Plain HTML `<table>`/`<tr>`/`<td>` tags** (no `class="table"` - that's
+TRMNL's own styled component, deliberately avoided per the paragraph above)
+are used throughout for grid layout and every `<img>`, for two reasons
+learned the hard way (both originally from weather-yr, the second one
+specific to this plugin):
 
-1. Each icon is a single **lone** `<img>` - never placed as a flex sibling
-   of another `<img>` in the same row.
-2. Each icon's `<img>` sits inside its own **single-cell `<table><td>`**,
-   not a bare `<div class="layout layout--row">`. The bus icons originally
-   used a bare flex-row `<div>` wrapper and rendered squashed into a tall
-   narrow sliver on a real device instead of their real landscape shape -
-   the surrounding flex layout was stretching the wrapper's cross-axis
-   instead of respecting the `<img>`'s own `width`/`height`. A `<table><td>`
-   cell sizes to its content regardless of the surrounding flex layout
-   (this is exactly why weather-yr's icons - which predate this plugin's
-   bug - were already inside table cells), so every icon here (position
-   map, per-board bus icon, per-board "senast sedd" icon) uses that same
-   wrapper now.
+1. It's what actually produces a departure-board-style grid - a line badge
+   column, a boxed time column, and a destination column, lined up across
+   rows - the same shape as a real transit app's departure screen. TRMNL's
+   flex `layout`/`layout--row` classes don't give you column alignment
+   across multiple rows the way a table's cells naturally do.
+2. Every icon's `<img>` needs to sit inside its own table cell, single and
+   alone - never a flex sibling of another `<img>`, and never inside a bare
+   `<div class="layout layout--row">`. The bus icons originally used that
+   bare flex-row `<div>` wrapper and rendered squashed into a tall narrow
+   sliver on a real device instead of their real landscape shape - the
+   surrounding flex layout was stretching the wrapper's cross-axis instead
+   of respecting the `<img>`'s own `width`/`height`. A `<table><td>` cell
+   sizes to its content regardless of the surrounding flex layout (this is
+   exactly why weather-yr's icons - which predate this plugin's bug - were
+   already inside table cells), so every icon here (the two frame icons,
+   the position map, each "Senaste position" icon) uses that wrapper.
 
 ## Data schema (`data.json`)
 

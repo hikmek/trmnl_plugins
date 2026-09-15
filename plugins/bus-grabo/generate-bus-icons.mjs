@@ -179,6 +179,15 @@ async function renderIcon(grid) {
   }
   return sharp(raw, { raw: { width: GRID_W, height: GRID_H, channels: 3 } })
     .resize({ width: GRID_W * UPSCALE, height: GRID_H * UPSCALE, kernel: "nearest" })
+    // buildBus() draws the nose/hood on the LEFT (columns 0..noseW) and any
+    // open rear platform on the right - so as originally generated, every
+    // bus faced left/backwards relative to how the boards read (MJÖRN >
+    // GRÅBO, left-to-right). .flop() mirrors horizontally so the nose ends
+    // up on the right, reading as facing "forward" into the text next to
+    // it - same fix applied to the actually-committed PNGs via an
+    // equivalent Image.FLIP_LEFT_RIGHT in the Python port that produced
+    // them (see icons/ and this file's header comment).
+    .flop()
     .png()
     .toBuffer();
 }
