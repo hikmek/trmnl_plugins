@@ -206,21 +206,25 @@ below them (Dagens kock's photo height, its description's truncate
 length) to compensate, and re-check the real device rather than
 assuming it fits.
 
-**Do not give the text/Dagens kock row's flex a decimal value (e.g.
-`flex: 1.4`) or shrink its gap below `gap--large`, even though that
-would reclaim more width for long dish names.** That combination was
-tried once to fix the overflow above and looked fine by every check
-possible without the real device (tag balance, structure review), but
-on the actual TRMNL screen the two columns collapsed into one narrow
-vertical sliver - the dish text wrapped one character per line and the
-Dagens kock photo shrank into a thin strip, instead of the normal two
-side-by-side columns. The decimal `flex` value is the prime suspect
-(TRMNL's real renderer may not handle a non-integer flex-grow the way a
-normal browser does), but it wasn't isolated from the gap change before
-reverting both, since every round-trip here costs real device-testing
-time. Both values are back to their original, proven state (`flex: 1`,
-`gap--large`); if the layout ever needs to reclaim more room, prefer
-shrinking the Dagens kock column further over touching these two.
+**Every direct child of a `layout--row` must carry the `item` class**
+(`class="item layout layout--col ..."`), not just `layout layout--col
+...` with an inline `style="flex: 1"`. This file's first version
+dropped `item` from the text/Dagens kock row's two cells, and it broke
+badly on the real device: the two columns collapsed into one narrow
+vertical sliver, with the dish text wrapped one character per line and
+the Dagens kock photo squeezed into a thin strip, instead of rendering
+side by side. It looked completely fine by every check possible without
+the real device (tag balance, structure review) - and, misleadingly,
+*looked* like a sizing/overflow problem, which led to two wasted
+round-trips trying a bigger text-column flex share (`flex: 1.4`) and a
+smaller gap (`gap--small`) before the actual cause was found by
+comparing against `template.liquid`'s three-column row, which has
+always used `item layout layout--col ...` and has rendered correctly
+this whole time. Apparently an inline `flex` style alone isn't enough
+for TRMNL's real renderer to size a row child correctly - the `item`
+class is load-bearing. If this layout ever needs another multi-column
+row, or this pattern gets copied into another plugin, give every direct
+child of a `layout--row` the `item` class from the start.
 
 The dish text also has a generous
 70-character truncate as a safety net for this same reason - every dish

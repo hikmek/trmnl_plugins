@@ -17,21 +17,25 @@
   photo/description also shrank (34% max-height, 30-char description) to
   give the now-bigger icon row room without pushing the rest off-pane.
 
-  CAUTION - keep the text/Dagens kock row's flex values as plain integers
-  (flex: 1) and its gap a named class (gap--large), not a decimal
-  (flex: 1.4) or a smaller named gap. A version of this file that used
-  flex: 1.4 + gap--small passed every check possible in this sandbox
-  (tag balance, structure) but came out completely broken on the real
-  device: the dish text and Dagens kock photo collapsed into one narrow
-  vertical sliver, with the text wrapped one character per line, instead
-  of the normal two side-by-side columns. The decimal flex value is the
-  prime suspect (TRMNL's real renderer may not handle a non-integer
-  flex-grow the way a normal browser would) but this wasn't isolated
-  before reverting both changes at once, since another broken round-trip
-  costs real device-testing time - if the icon-size overflow ever needs
-  more room again, prefer shrinking the Dagens kock column further over
-  touching these two values, and test on the actual device before
-  trusting any change here.
+  CAUTION - both cells of the text/Dagens kock row below MUST carry the
+  `item` class (`class="item layout layout--col ..."`), not just
+  `layout layout--col ...`. This file's first version was missing `item`
+  on both cells, and it broke the real device badly: the dish text and
+  Dagens kock photo collapsed into one narrow vertical sliver, with text
+  wrapped one character per line, instead of the normal two side-by-side
+  columns. It looked fine in every check possible without the real
+  device (tag balance, structure review) and *also* looked like an
+  overflow/sizing issue at first glance (worth flagging: it isn't - the
+  icon-size/flex-decimal/gap changes tried first were red herrings that
+  didn't fix it, because the actual bug was upstream of any of that).
+  `template.liquid` (the Full view)'s three-column row has always used
+  `item layout layout--col ...` on its cells and has rendered correctly
+  this whole time - that's what exposed the missing class here.
+  Apparently an inline `style="flex: 1"` alone isn't enough for TRMNL's
+  real renderer to size a `layout--row` child correctly; the `item`
+  class is load-bearing. If you ever add another multi-column row
+  anywhere in this plugin (or copy this pattern into another plugin),
+  give every direct child of a `layout--row` the `item` class.
 
   Each icon <img> lives in its own plain <table>/<td> cell (not TRMNL's
   styled table component, and not a bare flex row) - same rule as
@@ -99,7 +103,7 @@
   {% endif %}
 
   <div class="layout layout--row gap--large">
-    <div class="layout layout--col layout--center gap--xsmall" style="flex: 1;">
+    <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
       {% if today.lunch %}
       <div class="label">Dagens Lunch</div>
       <div class="description" style="text-align: center;">{{ today.lunch | truncate: 70 }}</div>
@@ -124,7 +128,7 @@
     </div>
 
     {% if today.dagens_kock %}
-    <div class="layout layout--col layout--center gap--xsmall" style="flex: 1;">
+    <div class="item layout layout--col layout--center gap--xsmall" style="flex: 1;">
       <div class="label">Dagens kock:</div>
       <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 34%;">
       <div class="label">{{ today.dagens_kock.name }}</div>
