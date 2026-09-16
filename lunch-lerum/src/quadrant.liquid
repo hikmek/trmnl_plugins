@@ -14,8 +14,11 @@ mentioned, instead of a single generic icon). 44px (not 60px) because
 this pane has a fixed, non-scrolling height: an earlier 60px version
 pushed the dish text + Dagens kock column entirely out of the visible
 area (icons showed, everything below them vanished). The Dagens kock
-photo/description also shrank (55px fixed height, 30-char description)
-to give the now-bigger icon row room without pushing the rest off-pane.
+photo/description also shrank (55px fixed height) to give the now-bigger
+icon row room without pushing the rest off-pane. The description was
+originally truncated at 30 chars, which was too aggressive - see the
+DESCRIPTION LENGTH note near the "Dagens kock" section below for why
+that's now 50.
 
 CAUTION - the dish-text/Dagens kock section below is a plain HTML
 `<table>` (one `<tr>`, two `<td>` cells), NOT a `<div class="layout
@@ -71,17 +74,25 @@ CAUTION - the dish-text/Dagens kock section below is a plain HTML
                       `display: inline-table;`, so it centers via `text-align` the same way
                       a run of inline content would, instead of depending on auto margins.
 
-                      WHOLE-PANE VERTICAL CENTERING (fixed): the outer wrapper here used to be
-                      plain `<div class="layout layout--col gap--xsmall">` - no `layout--center`
-                        - which left everything pinned near the top of the pane with a big dead
-                        gap below before the title bar, instead of centered top-to-bottom. Every
-                        other Quadrant template in this repo (broforce, banksy, weather-yr)
-                        already puts `layout--center` on its outermost wrapper div; this one had
-                        just been missed. Added `layout--center` plus `height: 100%;` (belt and
-                        suspenders - if TRMNL's own Mashup slot wrapper gives this div a definite
-                        height, centering has room to work with; if it doesn't, `height: 100%`
-                        is a harmless no-op, same reasoning as the icon-table centering fix
-                        above).
+                      WHOLE-PANE VERTICAL CENTERING (fixed, two passes): the outer wrapper here
+                      used to be plain `<div class="layout layout--col gap--xsmall">` - no
+                        `layout--center` - which left everything pinned near the top of the pane
+                        with a big dead gap below before the title bar, instead of centered
+                        top-to-bottom. First pass added `layout--center` plus `height: 100%;`
+                        (matching every other Quadrant template in this repo - broforce, banksy,
+                        weather-yr - which all have `layout--center` on their outermost wrapper).
+                        That noticeably improved things but real-device testing showed content
+                        still sitting too high with room left at the bottom - `layout--center` on
+                        a `layout--col` most likely only maps to `align-items: center` (cross
+                        axis = horizontal), not `justify-content` (main axis = vertical
+                        distribution), so it wasn't actually centering the column vertically
+                        within the pane's height, just horizontally within its own width (which
+                        the icon-table/text-align centering already handled anyway). Second pass
+                        added `justify-content: center;` explicitly inline, which is the actual
+                        CSS property responsible for vertical centering in a column flex
+                        container - kept `height: 100%;` too, since `justify-content: center`
+                        only has room to work with if the container's height is bigger than its
+                        content's natural height in the first place.
 
                         Each icon <img> lives in its own plain <table>/<td> cell (not TRMNL's
                           styled table component, and not a bare flex row) - same rule as
@@ -126,9 +137,19 @@ CAUTION - the dish-text/Dagens kock section below is a plain HTML
                               translates broforce's English description via
                               DAGENS_KOCK_DESCRIPTIONS_SV - broforce's own Quadrant/Full stay English,
                               this translation is lunch-lerum-only).
+
+                              DESCRIPTION LENGTH (fixed): the description was truncated at 30 chars,
+                              which cut most of the roster's Swedish descriptions off mid-word/mid-name
+                              (e.g. "Lee från Enter the Dragon / Bru..." never got to show "Bruce
+                              Lee" at all). The longest entry in DAGENS_KOCK_DESCRIPTIONS_SV is 47
+                              chars ("Connor och Murphy MacManus från Boondock Saints"), so 30 was
+                              cutting the majority of the ~42-entry roster short, not just an edge
+                              case. Raised to 50 - comfortably above the real max, same "safety
+                              ceiling every real value stays under" reasoning as the dish text's
+                              truncate: 70 above.
                               {%- endcomment -%}
 
-                              <div class="layout layout--col layout--center gap--xsmall" style="height: 100%;">
+                              <div class="layout layout--col layout--center gap--xsmall" style="height: 100%; justify-content: center;">
 
                                 {% if today.lunch and today.lunch_icon_urls.size > 0 %}
                                 <div style="text-align: center;">
@@ -183,7 +204,7 @@ CAUTION - the dish-text/Dagens kock section below is a plain HTML
                                       <div class="label" style="text-align: center;">Dagens kock:</div>
                                       <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 55px; width: auto; display: block; margin: 0 auto;">
                                       <div class="label" style="text-align: center;">{{ today.dagens_kock.name }}</div>
-                                      <div class="description" style="text-align: center;">{{ today.dagens_kock.description | truncate: 30 }}</div>
+                                      <div class="description" style="text-align: center;">{{ today.dagens_kock.description | truncate: 50 }}</div>
                                     </td>
                                     {% endif %}
                                   </tr>
