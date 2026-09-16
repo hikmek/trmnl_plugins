@@ -231,6 +231,22 @@ section needs changes again, test on the real device before trusting
 anything, and prefer extending the table pattern over reintroducing a
 `layout--row` here.
 
+**Follow-up bug, also fixed: don't put a flex container (`layout--col`
+or `layout--row`) directly inside a `<td>` either.** The table swap
+above fixed the sliver, but its first version still wrapped each cell's
+content in `<div class="layout layout--col layout--center gap--xsmall">`
+- and on the real device, everything after the first child inside each
+cell vanished (only the "Dagens Lunch"/"Dagens kock:" labels showed; the
+dish description and the chef photo were both just gone). Flexbox inside
+a table cell is a known cross-renderer trouble spot generally (cell
+sizing doesn't compose cleanly with flex layout), so both `<td>`s here
+now use plain `<div>`s with `text-align: center;` instead - there's no
+flex box in this section at all anymore, direct child of a `<td>` or
+otherwise. The Dagens kock `<img>` also switched from `max-height: 34%`
+(a percentage height needs a sized ancestor to mean anything, and a
+`<td>` with no explicit height doesn't give it one) to a fixed
+`max-height: 55px`.
+
 The dish text also has a generous
 70-character truncate as a safety net for this same reason - every dish
 in the current term (~63 chars max) fits well under it, so it's not

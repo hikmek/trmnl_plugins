@@ -14,8 +14,8 @@
   this pane has a fixed, non-scrolling height: an earlier 60px version
   pushed the dish text + Dagens kock column entirely out of the visible
   area (icons showed, everything below them vanished). The Dagens kock
-  photo/description also shrank (34% max-height, 30-char description) to
-  give the now-bigger icon row room without pushing the rest off-pane.
+  photo/description also shrank (55px fixed height, 30-char description)
+  to give the now-bigger icon row room without pushing the rest off-pane.
 
   CAUTION - the dish-text/Dagens kock section below is a plain HTML
   `<table>` (one `<tr>`, two `<td>` cells), NOT a `<div class="layout
@@ -41,6 +41,23 @@
   flex-grow. If you need to touch this again, test on the real device
   before trusting anything here, and prefer extending the table pattern
   over reintroducing a `layout--row` in this specific spot.
+
+  FOLLOW-UP BUG (fixed): the table swap above fixed the sliver, but the
+  first version of it still wrapped each `<td>`'s content in
+  `<div class="layout layout--col layout--center gap--xsmall">` (a flex
+  column) - and on the real device that made everything after the first
+  child inside each cell disappear (only the "Dagens Lunch"/"Dagens
+  kock:" labels showed; the dish description text and the chef photo
+  were both just gone). Flexbox inside a table cell is a well-known
+  cross-renderer trouble spot (cell height/flow doesn't compute the way
+  it does in a normal block or flex container), so this file no longer
+  puts a `layout--col`/`layout--row` flex container directly inside a
+  `<td>` anywhere - plain `<div>`s with `text-align: center;` handle the
+  centering instead, no flex needed since it's just stacked text/an
+  image. The Dagens kock `<img>` also switched from `max-height: 34%`
+  (a percentage height, which needs a sized ancestor to mean anything -
+  a `<td>` with no explicit height doesn't give it one) to a fixed
+  `max-height: 55px`.
 
   Each icon <img> lives in its own plain <table>/<td> cell (not TRMNL's
   styled table component, and not a bare flex row) - same rule as
@@ -109,40 +126,36 @@
 
   <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
     <tr>
-      <td style="border: none; vertical-align: top; padding: 0 4px;"{% if today.dagens_kock %} width="58%"{% else %} colspan="2"{% endif %}>
-        <div class="layout layout--col layout--center gap--xsmall">
+      <td style="border: none; vertical-align: top; padding: 0 4px; text-align: center;"{% if today.dagens_kock %} width="58%"{% else %} colspan="2"{% endif %}>
           {% if today.lunch %}
-          <div class="label">Dagens Lunch</div>
+          <div class="label" style="text-align: center;">Dagens Lunch</div>
           <div class="description" style="text-align: center;">{{ today.lunch | truncate: 70 }}</div>
           {% elsif today.vegetarian %}
-          <div class="label">Dagens Gröna</div>
+          <div class="label" style="text-align: center;">Dagens Gröna</div>
           <div class="description" style="text-align: center;">{{ today.vegetarian | truncate: 70 }}</div>
           {% elsif today.is_weekend %}
-          <div class="label">Hemmamat {{ today.weekday }}</div>
+          <div class="label" style="text-align: center;">Hemmamat {{ today.weekday }}</div>
           {% if today.hemmamat and today.weekday == "Lördag" %}
           <div class="value value--small" style="text-align: center;">{{ today.hemmamat.lordag.lunch | truncate: 28 }} / {{ today.hemmamat.lordag.middag | truncate: 28 }}</div>
           {% elsif today.hemmamat %}
           <div class="value value--small" style="text-align: center;">{{ today.hemmamat.sondag.lunch | truncate: 28 }} / {{ today.hemmamat.sondag.middag | truncate: 28 }}</div>
           {% else %}
-          <div class="value">{{ today.note }}</div>
+          <div class="value" style="text-align: center;">{{ today.note }}</div>
           {% endif %}
           {% elsif today.note %}
-          <div class="label">{{ today.weekday }}</div>
-          <div class="value">{{ today.note }}</div>
+          <div class="label" style="text-align: center;">{{ today.weekday }}</div>
+          <div class="value" style="text-align: center;">{{ today.note }}</div>
           {% else %}
-          <div class="value">No lunch info</div>
+          <div class="value" style="text-align: center;">No lunch info</div>
           {% endif %}
-        </div>
       </td>
 
       {% if today.dagens_kock %}
-      <td style="border: none; vertical-align: top; padding: 0 4px;" width="42%">
-        <div class="layout layout--col layout--center gap--xsmall">
-          <div class="label">Dagens kock:</div>
-          <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 34%;">
-          <div class="label">{{ today.dagens_kock.name }}</div>
+      <td style="border: none; vertical-align: top; padding: 0 4px; text-align: center;" width="42%">
+          <div class="label" style="text-align: center;">Dagens kock:</div>
+          <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 55px; width: auto; display: block; margin: 0 auto;">
+          <div class="label" style="text-align: center;">{{ today.dagens_kock.name }}</div>
           <div class="description" style="text-align: center;">{{ today.dagens_kock.description | truncate: 30 }}</div>
-        </div>
       </td>
       {% endif %}
     </tr>
