@@ -303,8 +303,46 @@ async function fetchHemmamatForWeek(weekNumber) {
   }
 }
 
+// lerum.se has repeatedly failed with "TypeError: fetch failed" / "Error:
+// redirect count exceeded" in GitHub Actions (never reproducible from here -
+// this sandbox's own network can't reach lerum.se at all, so this was
+// diagnosed from the Actions logs and the live data.json alone). Node's
+// built-in fetch (undici) follows redirects automatically but does NOT
+// persist Set-Cookie across those hops the way a browser's shared cookie
+// jar does - and some CMS bot-mitigation (lerum.se runs SiteVision) uses a
+// "set a cookie, then redirect back to the same URL expecting it echoed
+// back" check. Without the cookie, the redirect target looks like a fresh
+// visitor again and redirects right back, looping until undici's redirect
+// cap trips. This follows redirects manually, carrying any Set-Cookie
+// values forward as a Cookie header on the next hop, which is exactly what
+// a browser would do automatically.
+async function fetchWithCookieJar(url, options = {}, maxRedirects = 10) {
+  let currentUrl = url;
+  const cookies = new Map(); // name -> "name=value", so a repeated cookie updates in place
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    const headers = { ...options.headers };
+    if (cookies.size > 0) headers.Cookie = [...cookies.values()].join("; ");
+    const res = await fetchWithRetry(currentUrl, { ...options, headers, redirect: "manual" });
+
+    const setCookies = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [];
+    for (const setCookie of setCookies) {
+      const pair = setCookie.split(";")[0];
+      const name = pair.split("=")[0];
+      cookies.set(name, pair);
+    }
+
+    const location = res.headers.get("location");
+    if (res.status >= 300 && res.status < 400 && location) {
+      currentUrl = new URL(location, currentUrl).toString();
+      continue;
+    }
+    return res;
+  }
+  throw new Error(`${url}: too many redirects (possible cookie-based redirect loop)`);
+}
+
 async function fetchHtml() {
-  const res = await fetchWithRetry(SOURCE_URL, { headers: { "User-Agent": USER_AGENT } });
+  const res = await fetchWithCookieJar(SOURCE_URL, { headers: { "User-Agent": USER_AGENT } });
   if (!res.ok) {
     throw new Error(`lerum.se request failed: ${res.status} ${res.statusText}`);
   }

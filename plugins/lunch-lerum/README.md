@@ -322,3 +322,26 @@ node plugins/lunch-lerum/fetch.mjs
   moved, `pickDagensKock()` fails safely (logged, non-fatal) and
   `dagens_kock` is just `null` - the right column simply doesn't render in
   either view.
+- **Fixed: recurring GitHub Actions failure fetching lerum.se**
+  (`TypeError: fetch failed` / `Error: redirect count exceeded`, seen
+  repeatedly in the "Fetch lunch-lerum data" step). Because
+  `shouldSkipDailyFetch()` only re-fetches once per calendar day, every
+  failed run left `data.json` stuck on whatever was last successfully
+  published - which is why a code change (e.g. the Mac n Cheese icon pair
+  below) could sit merged for a while without showing up live: the daily
+  fetch kept failing before it ever ran the new code against fresh HTML.
+  Root cause: Node's built-in `fetch` (undici) follows redirects
+  automatically but does NOT persist `Set-Cookie` across those hops the way
+  a browser's shared cookie jar does. lerum.se (SiteVision) appears to gate
+  access behind a "set a cookie, then redirect back to the same URL"
+  check - without the cookie being echoed back, the redirect target looks
+  like a fresh visitor again and redirects right back, looping until
+  undici's redirect cap trips. Reproduced locally against a mock server
+  that implements exactly that pattern (plain `fetch()` fails with the
+  identical "redirect count exceeded" message; a cookie jar fixes it).
+  `fetchHtml()` in `fetch.mjs` now follows redirects manually
+  (`fetchWithCookieJar()`), carrying `Set-Cookie` values forward as a
+  `Cookie` header on each subsequent hop - exactly what a browser does for
+  you automatically. Only `fetchHtml()` (the lerum.se request) was changed;
+  the hemmamat Google Sheets request is a different host and already has
+  its own non-fatal fallback, so it was left alone.
