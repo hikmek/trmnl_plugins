@@ -130,6 +130,19 @@
   (`show_icon_row`), then a single flat `{% if show_icon_row %}` - no
   parentheses, no mixed and/or precedence to get wrong.
 
+  ICON SPACING (fixed, icons/ asset fix, not this file): the macintosh
+  and cheese icons had 19-25% built-in blank margin per side inside their
+  own 128x128 canvas (see generate-icons.mjs's macintoshIcon()/
+  cheeseIcon()), vs. ~9.4% (3/32 grid cells) for almost every other icon
+  in the set - so even with zero padding between their `<td>`s, this
+  specific pair looked much farther apart than e.g. the fish+salmon pair
+  does. Removed the icon `<td>`s' `padding: 0 2px` (now `padding: 0`) AND
+  regenerated both icons with their artwork widened to match the ~9.4%
+  convention - see generate-icons.mjs and the Python port in the repo
+  history for the exact rescale. Both fixes needed: padding alone only
+  closed ~4px of an ~18px gap that was mostly baked into the icons
+  themselves.
+
   Dish text: switched from `value value--small` (truncated to 40 chars,
   which is what was cutting dish names off mid-word - "Fiskgryta med lax
   och sej serveras me...") to the `description` class, truncated much more
@@ -195,11 +208,11 @@
           <tr>
             {% if today.lunch and today.lunch_icon_urls.size > 0 %}
             {% for icon_url in today.lunch_icon_urls %}
-            <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+            <td style="border: none; padding: 0;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
             {% endfor %}
             {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
             {% for icon_url in today.vegetarian_icon_urls %}
-            <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+            <td style="border: none; padding: 0;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
             {% endfor %}
             {% endif %}
           </tr>

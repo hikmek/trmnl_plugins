@@ -378,31 +378,45 @@ function potIcon(size = GRID) {
 // n cheese" match to both icons). Deliberately a generic retro-computer
 // shape - no logo, no specific product design - just a box with a screen
 // cutout, a floppy-slot cutout, and two feet.
+// Horizontal extent was originally 0.24-0.76 (52% of the canvas, ~25%/22%
+// margin per side) - much wider margins than almost every other icon in
+// the set (~9.4% = 3/32 grid cells each side), which is why this icon and
+// cheeseIcon() below looked unusually far apart from each other in the
+// Quadrant icon row even with zero padding between their table cells. All
+// x-coordinates below are rescaled around the same horizontal center
+// (0.5) to widen the case to 0.094-0.906, matching that ~9.4% convention -
+// vertical proportions and the internal screen/floppy-slot/feet layout
+// are otherwise unchanged.
 function macintoshIcon(size = GRID) {
   const g = create2D(size);
-  fillRect(g, size * 0.12, size * 0.86, size * 0.24, size * 0.76); // case
+  fillRect(g, size * 0.12, size * 0.86, size * 0.094, size * 0.906); // case
   // soften the four corners
-  clearRect(g, size * 0.12, size * 0.155, size * 0.24, size * 0.285);
-  clearRect(g, size * 0.12, size * 0.155, size * 0.695, size * 0.76);
-  clearRect(g, size * 0.82, size * 0.86, size * 0.24, size * 0.285);
-  clearRect(g, size * 0.82, size * 0.86, size * 0.695, size * 0.76);
-  clearRect(g, size * 0.22, size * 0.52, size * 0.32, size * 0.68); // screen cutout
-  clearRect(g, size * 0.63, size * 0.655, size * 0.4, size * 0.6); // floppy-slot cutout
-  fillRect(g, size * 0.86, size * 0.9, size * 0.28, size * 0.34); // left foot
-  fillRect(g, size * 0.86, size * 0.9, size * 0.66, size * 0.72); // right foot
+  clearRect(g, size * 0.12, size * 0.155, size * 0.094, size * 0.164);
+  clearRect(g, size * 0.12, size * 0.155, size * 0.8045, size * 0.906);
+  clearRect(g, size * 0.82, size * 0.86, size * 0.094, size * 0.164);
+  clearRect(g, size * 0.82, size * 0.86, size * 0.8045, size * 0.906);
+  clearRect(g, size * 0.22, size * 0.52, size * 0.219, size * 0.781); // screen cutout
+  clearRect(g, size * 0.63, size * 0.655, size * 0.344, size * 0.656); // floppy-slot cutout
+  fillRect(g, size * 0.86, size * 0.9, size * 0.1565, size * 0.2502); // left foot
+  fillRect(g, size * 0.86, size * 0.9, size * 0.7498, size * 0.8435); // right foot
   return g;
 }
 
+// Horizontal extent was originally 0.14-0.86 (~14% margin per side) -
+// wider than the ~9.4% (3/32 grid cells) most other icons use, same issue
+// as macintoshIcon() above. Rescaled around the same horizontal center to
+// 0.094-0.906, with the two holes' x-positions rescaled by the same
+// factor so they stay proportionally placed relative to the wedge.
 function cheeseIcon(size = GRID) {
   const g = create2D(size);
   // wedge: pointed tip on the left, flat rind on the right; two holes
   // placed well clear of the tip (a hole too close to the point gets lost
   // in the tip's own natural taper and doesn't read as a hole at all)
   fillWhere(g, (r, c) =>
-    isInTriangle(r, c, size * 0.14, size * 0.52, size * 0.86, size * 0.18, size * 0.86, size * 0.86)
+    isInTriangle(r, c, size * 0.094, size * 0.52, size * 0.906, size * 0.18, size * 0.906, size * 0.86)
   );
-  clearCircle(g, size * 0.62, size * 0.4, size * 0.075);
-  clearCircle(g, size * 0.68, size * 0.65, size * 0.065);
+  clearCircle(g, size * 0.6353, size * 0.4, size * 0.075);
+  clearCircle(g, size * 0.703, size * 0.65, size * 0.065);
   return g;
 }
 
