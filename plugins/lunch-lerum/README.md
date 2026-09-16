@@ -357,6 +357,13 @@ node plugins/lunch-lerum/fetch.mjs
   distribution). Second pass added `justify-content: center;` explicitly
   inline, which is the actual property responsible for vertical centering
   in a column flex container.
+- **Fixed: food icons centered over the whole pane instead of over "Dagens
+  Lunch".** The icon row used to be its own full-width block, centered
+  across the entire pane - visibly right of the dish text once "Dagens
+  kock" claims the right 42% column. Moved the icon table into the same
+  two-column `<table>` as the dish-text/kock row, as a `<tr>` above it
+  with a matching `width="58%"` on its `<td>`, so it centers within the
+  same column as the dish text it belongs to.
 - **Fixed: Dagens kock's description was cut off.** Truncated at 30 chars,
   which cut most of the ~42-entry Swedish description roster
   (`DAGENS_KOCK_DESCRIPTIONS_SV` in `fetch.mjs`) off mid-word or mid-name
