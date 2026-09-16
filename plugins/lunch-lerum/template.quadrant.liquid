@@ -59,6 +59,18 @@
   a `<td>` with no explicit height doesn't give it one) to a fixed
   `max-height: 55px`.
 
+  ICON CENTERING: the icon-row `<table>` used to rely on `margin: 0
+  auto` alone to center itself, which looked fine with 3 icons spread
+  across most of the pane's width but was visibly stuck at the left
+  edge with only 1 icon (e.g. a day whose dish matched no keyword and
+  fell back to the generic bowl icon). `margin: 0 auto` centers a block
+  element only when its containing block gives it a definite width to
+  center within, which apparently wasn't happening reliably inside the
+  `layout--col` column here. Fixed by wrapping the `<table>` in a
+  `<div style="text-align: center;">` and switching the table itself to
+  `display: inline-table;`, so it centers via `text-align` the same way
+  a run of inline content would, instead of depending on auto margins.
+
   Each icon <img> lives in its own plain <table>/<td> cell (not TRMNL's
   styled table component, and not a bare flex row) - same rule as
   bus-grabo/weather-yr: a bare <div class="layout layout--row"> wrapper
@@ -107,21 +119,25 @@
 <div class="layout layout--col gap--xsmall">
 
   {% if today.lunch and today.lunch_icon_urls.size > 0 %}
-  <table style="border-collapse: collapse; margin: 0 auto;">
-    <tr>
-      {% for icon_url in today.lunch_icon_urls %}
-      <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
-      {% endfor %}
-    </tr>
-  </table>
+  <div style="text-align: center;">
+    <table style="display: inline-table; border-collapse: collapse;">
+      <tr>
+        {% for icon_url in today.lunch_icon_urls %}
+        <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+        {% endfor %}
+      </tr>
+    </table>
+  </div>
   {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
-  <table style="border-collapse: collapse; margin: 0 auto;">
-    <tr>
-      {% for icon_url in today.vegetarian_icon_urls %}
-      <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
-      {% endfor %}
-    </tr>
-  </table>
+  <div style="text-align: center;">
+    <table style="display: inline-table; border-collapse: collapse;">
+      <tr>
+        {% for icon_url in today.vegetarian_icon_urls %}
+        <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+        {% endfor %}
+      </tr>
+    </table>
+  </div>
   {% endif %}
 
   <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">

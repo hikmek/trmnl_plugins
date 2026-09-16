@@ -183,6 +183,16 @@ yet) blanked TRMNL's entire render, not just that one icon row. The
 `.size > 0` guard skips the whole `<table>` in that situation instead of
 emitting a malformed empty one.
 
+**Centering the icon row (Quadrant only) needs `text-align: center` on
+a wrapping `<div>` plus `display: inline-table` on the `<table>` itself
+- plain `margin: 0 auto` on the table alone isn't reliable here.** It
+looked fine with 3 icons spread across most of the pane's width, but was
+visibly stuck at the left edge on a day with only 1 icon (a dish that
+matched no keyword, falling back to the generic bowl icon) - `margin: 0
+auto` only centers a block element within a containing block that gives
+it a definite width, which apparently doesn't happen reliably inside the
+surrounding `layout--col` column on TRMNL's renderer.
+
 Each icon `<img>` is rendered inside its own plain `<table>`/`<td>` cell
 (not TRMNL's styled table component, and not a bare flex row of `<img>`
 siblings) - a bare row of `<img>` tags gets squashed into a narrow
