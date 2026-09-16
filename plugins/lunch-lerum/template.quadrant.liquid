@@ -62,17 +62,23 @@
   a `<td>` with no explicit height doesn't give it one) to a fixed
   `max-height: 55px`.
 
-  ICON CENTERING: the icon-row `<table>` used to rely on `margin: 0
-  auto` alone to center itself, which looked fine with 3 icons spread
-  across most of the pane's width but was visibly stuck at the left
-  edge with only 1 icon (e.g. a day whose dish matched no keyword and
-  fell back to the generic bowl icon). `margin: 0 auto` centers a block
-  element only when its containing block gives it a definite width to
-  center within, which apparently wasn't happening reliably inside the
-  `layout--col` column here. Fixed by wrapping the `<table>` in a
-  `<div style="text-align: center;">` and switching the table itself to
-  `display: inline-table;`, so it centers via `text-align` the same way
-  a run of inline content would, instead of depending on auto margins.
+  ICON CENTERING (superseded - see ICON TABLE AUTO-STRETCH further down
+  for the current approach): the icon-row `<table>` used to rely on
+  `margin: 0 auto` alone to center itself, which looked fine with 3 icons
+  spread across most of the pane's width but was visibly stuck at the
+  left edge with only 1 icon (e.g. a day whose dish matched no keyword
+  and fell back to the generic bowl icon). `margin: 0 auto` centers a
+  block element only when its containing block gives it a definite width
+  to center within, which apparently wasn't happening reliably inside the
+  `layout--col` column here. Fixed AT THE TIME by wrapping the `<table>`
+  in a `<div style="text-align: center;">` and switching the table itself
+  to `display: inline-table;`, so it centered via `text-align` the same
+  way a run of inline content would, instead of depending on auto
+  margins. That whole approach was later replaced (once the icon table
+  moved inside the outer table's `<td>` - see ICON HORIZONTAL ALIGNMENT -
+  `display: inline-table` stopped sizing the table to its content in that
+  context) with an explicit Liquid-computed pixel width plus
+  `margin: 0 auto` again, which is what actually ships now.
 
   WHOLE-PANE VERTICAL CENTERING (fixed, two passes): the outer wrapper here
   used to be plain `<div class="layout layout--col gap--xsmall">` - no
@@ -143,6 +149,31 @@
   closed ~4px of an ~18px gap that was mostly baked into the icons
   themselves.
 
+  ICON TABLE AUTO-STRETCH (fixed): even after the padding + artwork fixes
+  above, the gap between 2+ icons was still huge - roughly 3x an icon's
+  own width, way more than a few px of internal margin could explain.
+  Root cause: the inner icon `<table>` relied on `display: inline-table`
+  to size itself to its content (so `margin: 0 auto` - or the wrapping
+  `text-align: center` div used even earlier - could center it as a
+  compact block). That table now lives nested inside the OUTER table's
+  `<td>` (see ICON HORIZONTAL ALIGNMENT above) instead of being a
+  top-level child of the pane, and something about that context - most
+  likely `display: inline-table` not being honored the way a real browser
+  honors it - let the inner table stretch to fill its container's full
+  width, with its 2 auto-sized `<td>`s each grabbing half of that (much
+  too generous) space and centering their own image within it
+  independently, pushing the icons far apart instead of tight together.
+  Fixed by computing an EXACT pixel width for the inner table with Liquid
+  math (`{{ icon_count | times: 44 }}px`, one `{% assign %}` per branch -
+  `times` is a standard Liquid filter, unlike the parenthesized
+  conditions the LIQUID SYNTAX BUG note above warns about) instead of
+  relying on `display: inline-table` to size it implicitly, giving each
+  inner `<td>` an explicit `width: 44px` too, and switching back to
+  `margin: 0 auto` for centering (which only works reliably with a
+  definite width - exactly what the explicit pixel width now provides).
+  No more `display: inline-table` or auto-sized cells anywhere in this
+  file.
+
   Dish text: switched from `value value--small` (truncated to 40 chars,
   which is what was cutting dish names off mid-word - "Fiskgryta med lax
   och sej serveras me...") to the `description` class, truncated much more
@@ -194,25 +225,28 @@
 <div class="layout layout--col layout--center gap--xsmall" style="height: 100%; justify-content: center;">
 
   {% assign show_icon_row = false %}
+  {% assign icon_row_width = 0 %}
   {% if today.lunch and today.lunch_icon_urls.size > 0 %}
     {% assign show_icon_row = true %}
+    {% assign icon_row_width = today.lunch_icon_urls.size | times: 44 %}
   {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
     {% assign show_icon_row = true %}
+    {% assign icon_row_width = today.vegetarian_icon_urls.size | times: 44 %}
   {% endif %}
 
   <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
     {% if show_icon_row %}
     <tr>
       <td style="border: none; padding: 0 4px 4px; text-align: center;"{% if today.dagens_kock %} width="58%"{% else %} colspan="2"{% endif %}>
-        <table style="display: inline-table; border-collapse: collapse;">
+        <table style="width: {{ icon_row_width }}px; margin: 0 auto; border-collapse: collapse; table-layout: fixed;">
           <tr>
             {% if today.lunch and today.lunch_icon_urls.size > 0 %}
             {% for icon_url in today.lunch_icon_urls %}
-            <td style="border: none; padding: 0;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+            <td style="border: none; padding: 0; width: 44px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
             {% endfor %}
             {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
             {% for icon_url in today.vegetarian_icon_urls %}
-            <td style="border: none; padding: 0;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+            <td style="border: none; padding: 0; width: 44px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
             {% endfor %}
             {% endif %}
           </tr>
