@@ -101,6 +101,22 @@
   into a squashed sliver instead of their real shape on a real device;
   table cells don't have that problem.
 
+  ICON HORIZONTAL ALIGNMENT (fixed): the icon row used to be its own
+  separate full-width `<div style="text-align: center;">`, centered over
+  the ENTIRE pane width - which put it visibly to the right of "Dagens
+  Lunch"/the dish text below it, since that text only occupies the left
+  58% column once a Dagens kock exists. Fixed by moving the icon table
+  into the SAME two-column `<table>` as the dish-text/Dagens-kock row, as
+  its own `<tr>` above it, with a matching `width="58%"` (or `colspan="2"`
+  when there's no Dagens kock) on its `<td>` - so it's centered within the
+  same 58%-wide column as the dish text, not the full pane. A `<table>`
+  nested inside another `<table>`'s `<td>` is standard HTML (not the
+  flexbox-in-`<td>` pattern the FOLLOW-UP BUG note above warns against),
+  so this doesn't carry that risk. The gap that used to come from the two
+  blocks being separate flex siblings with `gap--xsmall` between them is
+  now `padding: 0 4px 4px` (extra bottom padding) on the icon row's `<td>`
+  instead.
+
   Dish text: switched from `value value--small` (truncated to 40 chars,
   which is what was cutting dish names off mid-word - "Fiskgryta med lax
   och sej serveras me...") to the `description` class, truncated much more
@@ -151,29 +167,27 @@
 
 <div class="layout layout--col layout--center gap--xsmall" style="height: 100%; justify-content: center;">
 
-  {% if today.lunch and today.lunch_icon_urls.size > 0 %}
-  <div style="text-align: center;">
-    <table style="display: inline-table; border-collapse: collapse;">
-      <tr>
-        {% for icon_url in today.lunch_icon_urls %}
-        <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
-        {% endfor %}
-      </tr>
-    </table>
-  </div>
-  {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
-  <div style="text-align: center;">
-    <table style="display: inline-table; border-collapse: collapse;">
-      <tr>
-        {% for icon_url in today.vegetarian_icon_urls %}
-        <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
-        {% endfor %}
-      </tr>
-    </table>
-  </div>
-  {% endif %}
-
   <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+    {% if (today.lunch and today.lunch_icon_urls.size > 0) or (today.vegetarian and today.vegetarian_icon_urls.size > 0) %}
+    <tr>
+      <td style="border: none; padding: 0 4px 4px; text-align: center;"{% if today.dagens_kock %} width="58%"{% else %} colspan="2"{% endif %}>
+        <table style="display: inline-table; border-collapse: collapse;">
+          <tr>
+            {% if today.lunch and today.lunch_icon_urls.size > 0 %}
+            {% for icon_url in today.lunch_icon_urls %}
+            <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+            {% endfor %}
+            {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
+            {% for icon_url in today.vegetarian_icon_urls %}
+            <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+            {% endfor %}
+            {% endif %}
+          </tr>
+        </table>
+      </td>
+      {% if today.dagens_kock %}<td style="border: none;" width="42%"></td>{% endif %}
+    </tr>
+    {% endif %}
     <tr>
       <td style="border: none; vertical-align: top; padding: 0 4px; text-align: center;"{% if today.dagens_kock %} width="58%"{% else %} colspan="2"{% endif %}>
           {% if today.lunch %}
