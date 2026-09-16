@@ -137,22 +137,37 @@ never blocks skolmat data from publishing.
 
 ## Pixel-art food icons
 
-`generate-icons.mjs` procedurally draws 17 pixel-art icons at a 32x32 grid
+`generate-icons.mjs` procedurally draws 19 pixel-art icons at a 32x32 grid
 (finer/more granular than the old 16x16 grid - no external images, no
 licensing concerns) into `icons/*.png`: 14 food-type icons (`pasta`,
 `meatballs`, `fish`, `salmon`, `chicken`, `sausage`, `rice`, `soup`,
 `taco`, `pie`, `pancake`, `meatloaf`, `casserole`, `pot` - a stew/curry/
 gulasch pot with a lid and steam lines, replacing the old single `stew`
-icon), 2 "who chose" icons (`chef` - a toque/chef's hat, for "Kockens
-val"; `people` - two person silhouettes, for "Gästens val"), and
-`generic` (a plain empty bowl) as the ultimate fallback. `salmon` reuses
-`fish`'s silhouette plus three diagonal subtractive stripe cutouts (not
-an additive overlay - additive details drawn inside an already-solid
-black shape render identically to the base icon, a bug found the hard
-way in weather-yr's clothing icons; subtracting pixels from the solid
-fill is what actually shows up). These are static assets committed to
-git and copied into `public/lunch-lerum/icons/` by the shared workflow
-(same pattern as banksy's gallery / weather-yr's icons).
+icon), a wordplay pair (`macintosh`/`cheese`, see below), 2 "who chose"
+icons (`chef` - a toque/chef's hat, for "Kockens val"; `people` - two
+person silhouettes, for "Gästens val"), and `generic` (a plain empty
+bowl) as the ultimate fallback. `salmon` reuses `fish`'s silhouette plus
+three diagonal subtractive stripe cutouts (not an additive overlay -
+additive details drawn inside an already-solid black shape render
+identically to the base icon, a bug found the hard way in weather-yr's
+clothing icons; subtracting pixels from the solid fill is what actually
+shows up). These are static assets committed to git and copied into
+`public/lunch-lerum/icons/` by the shared workflow (same pattern as
+banksy's gallery / weather-yr's icons).
+
+**`macintosh` + `cheese` are a wordplay pair for "Mac n cheese"**, shown
+together instead of a generic pasta/casserole icon: a generic old boxy
+computer/monitor silhouette (screen cutout, floppy-slot cutout, two
+feet - not any specific product's design, just a generic "old computer"
+pictogram) for the "Mac" pun, and a wedge of cheese with two holes for
+the "cheese". Both `FOOD_ICON_KEYWORDS` entries in `fetch.mjs` match the
+exact same phrase (`/mac\s*n\s*cheese|mac\s*(?:and|&)\s*cheese/i`) with
+different icon names, so `iconsForDish()`'s "collect every match" logic
+naturally adds both. The cheese wedge's holes are deliberately placed
+well clear of its pointed tip - a hole positioned too close to the tip
+gets lost in the tip's own taper and just looks like part of the
+triangle's edge instead of a distinct hole (found by rendering the raw
+grid as ASCII art and eyeballing it before committing to coordinates).
 
 **A dish can show several icons together now.** `fetch.mjs`'s
 `iconsForDish()` walks the keyword list (`FOOD_ICON_KEYWORDS`) and
