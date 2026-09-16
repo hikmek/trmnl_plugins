@@ -345,3 +345,11 @@ node plugins/lunch-lerum/fetch.mjs
   you automatically. Only `fetchHtml()` (the lerum.se request) was changed;
   the hemmamat Google Sheets request is a different host and already has
   its own non-fatal fallback, so it was left alone.
+- **Fixed: Quadrant content sat too high, not vertically centered in the
+  pane.** The outer wrapper in `template.quadrant.liquid` was plain
+  `<div class="layout layout--col gap--xsmall">` - missing `layout--center`,
+  which every other Quadrant template in this repo (`broforce`, `banksy`,
+  `weather-yr`) already has on its outermost wrapper. Added `layout--center`
+  plus `height: 100%;` (the same "give it a definite size so centering has
+  something to center within" reasoning as the icon-table centering fix
+  above).

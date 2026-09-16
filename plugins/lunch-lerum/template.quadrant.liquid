@@ -71,6 +71,18 @@
   `display: inline-table;`, so it centers via `text-align` the same way
   a run of inline content would, instead of depending on auto margins.
 
+  WHOLE-PANE VERTICAL CENTERING (fixed): the outer wrapper here used to be
+  plain `<div class="layout layout--col gap--xsmall">` - no `layout--center`
+  - which left everything pinned near the top of the pane with a big dead
+  gap below before the title bar, instead of centered top-to-bottom. Every
+  other Quadrant template in this repo (broforce, banksy, weather-yr)
+  already puts `layout--center` on its outermost wrapper div; this one had
+  just been missed. Added `layout--center` plus `height: 100%;` (belt and
+  suspenders - if TRMNL's own Mashup slot wrapper gives this div a definite
+  height, centering has room to work with; if it doesn't, `height: 100%`
+  is a harmless no-op, same reasoning as the icon-table centering fix
+  above).
+
   Each icon <img> lives in its own plain <table>/<td> cell (not TRMNL's
   styled table component, and not a bare flex row) - same rule as
   bus-grabo/weather-yr: a bare <div class="layout layout--row"> wrapper
@@ -116,7 +128,7 @@
   this translation is lunch-lerum-only).
 {%- endcomment -%}
 
-<div class="layout layout--col gap--xsmall">
+<div class="layout layout--col layout--center gap--xsmall" style="height: 100%;">
 
   {% if today.lunch and today.lunch_icon_urls.size > 0 %}
   <div style="text-align: center;">
