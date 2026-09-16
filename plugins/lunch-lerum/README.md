@@ -364,6 +364,15 @@ node plugins/lunch-lerum/fetch.mjs
   two-column `<table>` as the dish-text/kock row, as a `<tr>` above it
   with a matching `width="58%"` on its `<td>`, so it centers within the
   same column as the dish text it belongs to.
+- **Fixed: food icons disappeared entirely after the alignment fix above.**
+  Root cause: the fix gated the icon row on
+  `{% if (today.lunch and ...) or (today.vegetarian and ...) %}` -
+  parenthesized grouping, which Liquid doesn't support at all (conditions
+  are evaluated strictly left to right, no operator precedence). This
+  silently failed rather than erroring - not a TRMNL-specific device bug,
+  a plain Liquid syntax mistake that would misbehave in any Liquid
+  renderer. Fixed by computing the boolean with `{% assign %}` first, then
+  a single flat `{% if %}` with no parentheses.
 - **Fixed: Dagens kock's description was cut off.** Truncated at 30 chars,
   which cut most of the ~42-entry Swedish description roster
   (`DAGENS_KOCK_DESCRIPTIONS_SV` in `fetch.mjs`) off mid-word or mid-name
