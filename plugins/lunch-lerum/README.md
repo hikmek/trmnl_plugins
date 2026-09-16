@@ -346,10 +346,21 @@ node plugins/lunch-lerum/fetch.mjs
   the hemmamat Google Sheets request is a different host and already has
   its own non-fatal fallback, so it was left alone.
 - **Fixed: Quadrant content sat too high, not vertically centered in the
-  pane.** The outer wrapper in `template.quadrant.liquid` was plain
-  `<div class="layout layout--col gap--xsmall">` - missing `layout--center`,
-  which every other Quadrant template in this repo (`broforce`, `banksy`,
-  `weather-yr`) already has on its outermost wrapper. Added `layout--center`
-  plus `height: 100%;` (the same "give it a definite size so centering has
-  something to center within" reasoning as the icon-table centering fix
-  above).
+  pane (two passes).** The outer wrapper in `template.quadrant.liquid` was
+  plain `<div class="layout layout--col gap--xsmall">` - missing
+  `layout--center`, which every other Quadrant template in this repo
+  (`broforce`, `banksy`, `weather-yr`) already has on its outermost
+  wrapper. First pass added `layout--center` plus `height: 100%;`, which
+  helped but real-device testing showed content still sitting high with
+  room left at the bottom - `layout--center` on a column most likely only
+  centers the cross axis (horizontal), not the main axis (vertical
+  distribution). Second pass added `justify-content: center;` explicitly
+  inline, which is the actual property responsible for vertical centering
+  in a column flex container.
+- **Fixed: Dagens kock's description was cut off.** Truncated at 30 chars,
+  which cut most of the ~42-entry Swedish description roster
+  (`DAGENS_KOCK_DESCRIPTIONS_SV` in `fetch.mjs`) off mid-word or mid-name
+  (e.g. "Bro Lee"'s description never got to show "Bruce Lee"). The
+  longest entry is 47 chars, so raised the truncate limit to 50 -
+  comfortably above the real max, same reasoning as the dish text's
+  truncate: 70.
