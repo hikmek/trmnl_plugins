@@ -95,6 +95,19 @@ function clearRect(g, r0, r1, c0, c1) {
   }
 }
 
+// Subtractive circle (a round cutout in an already-solid fill) - the
+// existing circle() helper only adds, and the "invisible variant" lesson
+// from weather-yr (an additive detail inside solid black renders
+// identically to no detail at all) means holes/windows need this instead.
+function clearCircle(g, cx, cy, r) {
+  const n = g.length;
+  for (let row = 0; row < n; row++) {
+    for (let col = 0; col < n; col++) {
+      if (isInEllipse(row, col, cx, cy, r, r)) g[row][col] = false;
+    }
+  }
+}
+
 // A simple bowl/plate: a wide flat-topped arc across the lower third,
 // with a thin rim line just above it.
 function bowl(size = GRID) {
@@ -359,6 +372,40 @@ function potIcon(size = GRID) {
   return g;
 }
 
+// A wordplay pair for "Mac n cheese": a generic old boxy computer/monitor
+// silhouette (the "Mac" pun) and a wedge of cheese with a few holes, shown
+// together (see FOOD_ICON_KEYWORDS in fetch.mjs, which maps the same "mac
+// n cheese" match to both icons). Deliberately a generic retro-computer
+// shape - no logo, no specific product design - just a box with a screen
+// cutout, a floppy-slot cutout, and two feet.
+function macintoshIcon(size = GRID) {
+  const g = create2D(size);
+  fillRect(g, size * 0.12, size * 0.86, size * 0.24, size * 0.76); // case
+  // soften the four corners
+  clearRect(g, size * 0.12, size * 0.155, size * 0.24, size * 0.285);
+  clearRect(g, size * 0.12, size * 0.155, size * 0.695, size * 0.76);
+  clearRect(g, size * 0.82, size * 0.86, size * 0.24, size * 0.285);
+  clearRect(g, size * 0.82, size * 0.86, size * 0.695, size * 0.76);
+  clearRect(g, size * 0.22, size * 0.52, size * 0.32, size * 0.68); // screen cutout
+  clearRect(g, size * 0.63, size * 0.655, size * 0.4, size * 0.6); // floppy-slot cutout
+  fillRect(g, size * 0.86, size * 0.9, size * 0.28, size * 0.34); // left foot
+  fillRect(g, size * 0.86, size * 0.9, size * 0.66, size * 0.72); // right foot
+  return g;
+}
+
+function cheeseIcon(size = GRID) {
+  const g = create2D(size);
+  // wedge: pointed tip on the left, flat rind on the right; two holes
+  // placed well clear of the tip (a hole too close to the point gets lost
+  // in the tip's own natural taper and doesn't read as a hole at all)
+  fillWhere(g, (r, c) =>
+    isInTriangle(r, c, size * 0.14, size * 0.52, size * 0.86, size * 0.18, size * 0.86, size * 0.86)
+  );
+  clearCircle(g, size * 0.62, size * 0.4, size * 0.075);
+  clearCircle(g, size * 0.68, size * 0.65, size * 0.065);
+  return g;
+}
+
 const ICONS = {
   pasta: () => withBowl(noodles),
   meatballs: () => withBowl(meatballCluster),
@@ -374,6 +421,8 @@ const ICONS = {
   meatloaf: () => withBowl(loafRect),
   casserole: () => withBowl(gratinGrid),
   pot: () => potIcon(GRID), // "gryta" - standalone pot, not food-in-a-bowl
+  macintosh: () => macintoshIcon(GRID), // "Mac n cheese" wordplay - the "Mac"
+  cheese: () => cheeseIcon(GRID), // "Mac n cheese" wordplay - the "cheese"
   chef: () => chefHat(GRID), // "Kockens val" - chef's choice
   people: () => peopleIcon(GRID), // "Gästens val" - guest's choice
   generic: () => bowl(GRID), // empty bowl - guaranteed fallback icon

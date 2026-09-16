@@ -148,6 +148,13 @@ const FOOD_ICON_KEYWORDS = [
   { pattern: /köttbullar|kottbullar/i, icon: "meatballs" },
   { pattern: /spaghetti|pasta|lasagn|nudlar|nudel|penne/i, icon: "pasta" },
   { pattern: /korv/i, icon: "sausage" },
+  // "Mac n cheese" gets a wordplay pair instead of the generic pasta icon:
+  // both patterns match the same phrase, so iconsForDish() (which collects
+  // every match, not just the first) adds both the "Mac" (a generic old
+  // computer/monitor silhouette) and the "cheese" (a wedge with holes)
+  // icon together - see generate-icons.mjs's macintoshIcon()/cheeseIcon().
+  { pattern: /mac\s*n\s*cheese|mac\s*(?:and|&)\s*cheese/i, icon: "macintosh" },
+  { pattern: /mac\s*n\s*cheese|mac\s*(?:and|&)\s*cheese/i, icon: "cheese" },
   // Salmon gets its own icon distinct from the generic "fish" one -
   // checked before the generic fish pattern below so "lax" always adds
   // the salmon icon even inside a word that also matches "fisk" (e.g.
