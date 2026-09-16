@@ -117,6 +117,19 @@
   now `padding: 0 4px 4px` (extra bottom padding) on the icon row's `<td>`
   instead.
 
+  LIQUID SYNTAX BUG (fixed): the first version of the alignment fix above
+  gated the new `<tr>` on `{% if (today.lunch and ...) or (today.vegetarian
+  and ...) %}` - parenthesized grouping in an `{% if %}` condition, which
+  Liquid does NOT support (there's no operator precedence/grouping syntax
+  at all - conditions are evaluated strictly left to right). This made the
+  entire icon row silently stop rendering (no error shown, no icons, dish
+  text/Dagens kock still fine) rather than throwing something obviously
+  wrong - a much sneakier failure than the earlier device-only layout
+  bugs, since this one would likely fail in ANY Liquid renderer, not just
+  TRMNL's. Fixed by computing a plain boolean with `{% assign %}` first
+  (`show_icon_row`), then a single flat `{% if show_icon_row %}` - no
+  parentheses, no mixed and/or precedence to get wrong.
+
   Dish text: switched from `value value--small` (truncated to 40 chars,
   which is what was cutting dish names off mid-word - "Fiskgryta med lax
   och sej serveras me...") to the `description` class, truncated much more
@@ -167,8 +180,15 @@
 
 <div class="layout layout--col layout--center gap--xsmall" style="height: 100%; justify-content: center;">
 
+  {% assign show_icon_row = false %}
+  {% if today.lunch and today.lunch_icon_urls.size > 0 %}
+    {% assign show_icon_row = true %}
+  {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
+    {% assign show_icon_row = true %}
+  {% endif %}
+
   <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
-    {% if (today.lunch and today.lunch_icon_urls.size > 0) or (today.vegetarian and today.vegetarian_icon_urls.size > 0) %}
+    {% if show_icon_row %}
     <tr>
       <td style="border: none; padding: 0 4px 4px; text-align: center;"{% if today.dagens_kock %} width="58%"{% else %} colspan="2"{% endif %}>
         <table style="display: inline-table; border-collapse: collapse;">
