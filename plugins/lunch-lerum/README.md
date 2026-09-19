@@ -213,9 +213,9 @@ Each icon `<img>` is rendered inside its own plain `<table>`/`<td>` cell
 siblings) - a bare row of `<img>` tags gets squashed into a narrow
 sliver on a real device, table cells render each icon at full size
 instead (same lesson learned in bus-grabo/weather-yr). In
-`template.quadrant.liquid` this icon row sits centered at the very
-**top** of the pane, above the dish text, and the icons are bigger
-(44px, up from the original 32px). In `template.liquid` the icons sit
+`template.quadrant.liquid` this icon row sits centered at the top of the
+**left column**, above the dish text, and the icons are bigger (44px, up
+from the original 32px). In `template.liquid` the icons sit
 below the dish text (Skolmatn column: 64px; upcoming-days forecast
 table: 26px each) - the Full view has room to spare, so it isn't
 height-constrained the way Quadrant is.
@@ -226,10 +226,49 @@ visible area entirely (the icons showed, everything below them just
 vanished, with no partial cut-off - the renderer appears to crop
 whatever doesn't fit rather than shrink or scroll it). 44px was chosen
 as the biggest size that leaves room for the rest of the pane's content;
-if you make icons bigger again, expect to also shrink something else
-below them (Dagens kock's photo height, its description's truncate
-length) to compensate, and re-check the real device rather than
-assuming it fits.
+if you make icons bigger again, the dish text has less room, but the
+template now works out its own font size from what is left (see "Quadrant
+sizing is adaptive" below), so nothing else needs shrinking by hand -
+just re-check the real device rather than assuming it fits.
+
+**Quadrant sizing is adaptive (dish text, Dagens kock photo and its text).**
+Instead of one fixed size that has to survive the worst-case dish or chef,
+`template.quadrant.liquid` measures today's text in Liquid and picks the
+biggest sizes that still fit. Everything is derived from a single
+`pane_h` variable at the top of the markup (170px - the content budget,
+deliberately a bit under the ~180px believed usable once the 40px title
+bar is subtracted; raise it if the real device shows spare room, lower it
+if the bottom gets cropped). The layout is now ONE table row with two
+cells (56% / 44%): the icon row moved into the left cell, so the Dagens
+kock cell gets the pane's full height instead of sharing it with an icon
+row above - that is what makes a much bigger photo possible.
+
+- *Dish text (left):* 18/20/22/24/28/32/40px, chosen by simulating a greedy
+  word-wrap for each size on character counts (Liquid has no functions,
+  so there is one wrap block per size) and taking the largest size whose
+  wrapped height fits and whose longest word fits on one line - Swedish
+  compounds like "Fiskgratäng" are why the longest-word check matters.
+  Hyphens are break points. Was a fixed 16px `description`; a short note
+  like "Höstlov" now gets 40px, a 60-character dish 18-22px. Dishes are
+  truncated at 64 characters (was 70) so the smallest size always fits.
+- *Dagens kock (right):* name 20px semibold; description 20/18/16px, the
+  largest that leaves the photo at least 80px (`img_min`), else 16px; the
+  photo gets whatever height remains (40-150px) via `max-height`. Photo
+  heights across all 42 portraits come out 48-102px (median 84px),
+  against the old fixed 55px. The three chefs with the longest name plus
+  description (Boondock Bros, Broniversal Soldier, Col. James Broddock)
+  only get 48px - a little under the old size - because their text needs
+  five lines; raising `pane_h` is what would help them.
+- *How it was checked:* the finished template was executed by a small
+  Liquid interpreter and rendered at 400x240 in Chromium for all 42
+  chefs x 18 dishes x 1 and 4 icons, plus weekend hemmamat, note-only
+  days and the no-chef fallback; nothing exceeded `pane_h`. The chars-per-
+  line values were calibrated against those renders (DejaVu Sans as a
+  slightly wider stand-in for Inter, minus one character of margin).
+  **Not verified on the physical device** - TRMNL's stylesheet was not
+  available offline, so the `label` height (20px) and any `.value`
+  margins are assumptions. If a font size is ever changed, recalibrate
+  the per-size character counts rather than adjusting them by feel.
 
 **The dish-text/Dagens kock section is a plain HTML `<table>` (one
 `<tr>`, two `<td>`s), not a `<div class="layout layout--row">` with flex
@@ -269,14 +308,16 @@ now use plain `<div>`s with `text-align: center;` instead - there's no
 flex box in this section at all anymore, direct child of a `<td>` or
 otherwise. The Dagens kock `<img>` also switched from `max-height: 34%`
 (a percentage height needs a sized ancestor to mean anything, and a
-`<td>` with no explicit height doesn't give it one) to a fixed
-`max-height: 55px`.
+`<td>` with no explicit height doesn't give it one) to a pixel
+`max-height` - fixed at 55px back then, computed per render now (see
+"Quadrant sizing is adaptive" above).
 
-The dish text also has a generous
-70-character truncate as a safety net for this same reason - every dish
-in the current term (~63 chars max) fits well under it, so it's not
-visible in practice, but an unbounded name could in principle wrap
-enough lines to push content off-pane the same way the icons did.
+The dish text also has a truncate
+(64 characters since the adaptive sizing above, was 70) as a safety net
+for this same reason - every dish in the current term (~63 chars max)
+fits under it, so it's not visible in practice, but an unbounded name
+could in principle wrap enough lines to push content off-pane the same
+way the icons did.
 
 To add more dishes/categories: add a `{ pattern: /keyword/i, icon: "name" }`
 entry to `FOOD_ICON_KEYWORDS` in `fetch.mjs`, draw a matching shape
