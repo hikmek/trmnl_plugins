@@ -254,9 +254,41 @@ read back up to the "MJÖRN > GRÅBO" / "GRÅBO > GBG" column header. Since
 the badge already states the line, the "Senaste position" text no longer
 repeats it with a `{{ last_seen.bus_name | default: line }}: ` prefix
 (dropped in `template.liquid`) - it's just the stop name + timestamp.
-`template.quadrant.liquid` puts the same badge inline before the
-"MJÖRN > GRÅBO" header text and before "Senaste position" instead, to fit
-the narrower pane.
+`template.quadrant.liquid` places the badge differently (see "Quadrant
+layout" below): in the shared left column of the times row and again at the
+start of the "Senaste position" line, so the two badges line up.
+
+## Quadrant layout (icon top-left, badges aligned)
+
+Each board in `template.quadrant.liquid` is one three-row table sharing a
+single ~48px left column:
+
+1. bus icon (top-left corner of the board) | "MJÖRN > GRÅBO" / "GRÅBO > GÖTEBORG"
+2. line badge (525 / X3) | boxed ETD | boxed Nästa (or "Ingen avgång")
+3. line badge + "Senaste position: ..." (`colspan="3"`, full pane width)
+
+So the icon, the journey badge and the last-seen badge are stacked in the
+same left column and the journey badge lines up exactly with the last-seen
+badge. Before this, the badge sat in the header row - pushed right by the
+icon column - while "Senaste position" was a separate full-width `<div>`
+under the table starting at the pane's left edge, so the two badges were
+about 50px out of line, and the icon was vertically centered beside the
+header and times rows instead of at the board's top-left.
+
+Making the last-seen line a table row (instead of its own flex child) also
+removed two `gap--small` gaps, so the pane is about 10px SHORTER than before
+- important because the Quadrant pane is fixed-height and crops what doesn't
+fit. It keeps the same full width for the last-seen text, so it wraps exactly
+as often as it did before (the layout deliberately does NOT put that line
+inside the icon's right-hand column, which would have cost it ~50px and made
+"Senaste position: Göteborg (...)" wrap on most days).
+
+Checked locally (Chromium at 400x240, old vs new template with a monospace
+stand-in for NicoClean at 7, 8 and 9px per character, 525 and X3 with short
+and long last-seen stops, delays, and both "Ingen avgång"): the new layout was
+10px shorter than the old one in every case, and the two badges of each board
+shared the same left x. NicoClean itself wasn't available, so the exact
+wrapping of the last-seen line on the real device is unverified.
 
 ## Debugging "Ingen avgång" (no departure) or a wrong/missing line
 

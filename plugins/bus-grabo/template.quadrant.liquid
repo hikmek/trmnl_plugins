@@ -3,13 +3,32 @@
   screen (separate from the "Full" tab's template.liquid). Compact version
   for small Mashup panes: each board gets one row with its icon on the left
   (framing the two departure lines like a small departure board) + line/time
-  for ETD and Nästa, plus a one-line "Senaste position" (last seen) row - a
+  for ETD and Nästa, plus a "Senaste position" (last seen) row - a
   real nearest bus stop name + timestamp, shown even for a sighting from
   that line running a different direction or route variant, always
   populated once any GPS sighting has ever been recorded (see fetch.mjs's
   nearestStopName() and buildLastSeen()). No separate map image here (a
   Quadrant pane is too narrow for the 480px-wide position map to be legible
   - that stays on the Full view only).
+
+  LAYOUT (per board): ONE table per board, three rows, one shared left
+  column (the same ~48px column the icon always used):
+    1. bus icon (top-left corner of the board)  |  "MJÖRN > GRÅBO" text
+    2. line badge (525 / X3)                    |  boxed ETD  |  boxed Nästa
+    3. line badge (525 / X3) + "Senaste position: ..."  (colspan=3, so the
+       text runs the full pane width, same as before)
+  So each board reads top to bottom as: icon + route, then "<line> + times"
+  (the journey), then "<line> + last seen", with the icon and both line
+  badges stacked in the same left column. Both badges start at the pane's
+  left edge, i.e. the journey badge and the last-seen badge line up exactly.
+  Previously the badge sat in the header row (pushed right by the icon
+  column) while the last-seen line was a separate full-width <div> below the
+  table starting at x=0, so the two badges were ~50px out of line, and the
+  icon was vertically centered beside the header+times rows instead of at
+  the board's top-left. The last-seen line also used to be its own flex
+  child (an extra gap--small) - it is now a table row, which saves two gaps
+  of height in the fixed-height pane. Badge in the "Ingen avgång" case still
+  shows, so a board with no departure keeps its line badge.
 
   Icon direction: see template.liquid's comment - icons are drawn nose-first
   towards the right, so placed at the left edge they read as driving into
@@ -24,22 +43,24 @@
   have that problem.
 
   Line badge: a small black-background/white-text <span> with the board's
-  line number (525 or X3) - once in the header row next to "MJÖRN > GRÅBO"
-  / "GRÅBO > GÖTEBORG", and again on the "Senaste position" line, so it's
-  clear at a glance which line each row is about (same as template.liquid -
-  see its comment for why).
+  line number (525 or X3) - in the left column of the times row (next to
+  the boxed ETD/Nästa), and again at the start of the "Senaste position"
+  line, so it's clear at a glance which line each row is about (template.
+  liquid puts it beside its own header text instead - see its comment for
+  why the badge exists at all).
 {%- endcomment -%}
 
 <div class="layout layout--col gap--small">
 
   <table style="width: 100%; border-collapse: collapse;">
     <tr>
-      <td rowspan="2" style="width: 48px; border: none; padding: 0 6px 0 0; text-align: center; vertical-align: middle;">
-        <img class="image image--contain image-dither" src="{{ mjorn_to_grabo.icon_url }}" width="44" height="22" style="width: 44px; height: 22px;">
+      <td style="width: 48px; border: none; padding: 0 6px 0 0; text-align: left; vertical-align: top;">
+        <img class="image image--contain image-dither" src="{{ mjorn_to_grabo.icon_url }}" width="44" height="22" style="width: 44px; height: 22px; display: block;">
       </td>
-      <td colspan="2" style="border: none; padding: 0; text-align: left;"><div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 4px;">{{ mjorn_to_grabo.line }}</span>MJÖRN &gt; GRÅBO</div></td>
+      <td colspan="2" style="border: none; padding: 0; text-align: left; vertical-align: middle;"><div class="label">MJÖRN &gt; GRÅBO</div></td>
     </tr>
     <tr>
+      <td style="border: none; padding: 0 6px 0 0; text-align: left; vertical-align: middle;"><div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 0;">{{ mjorn_to_grabo.line }}</span></div></td>
       {% if mjorn_to_grabo.has_departure %}
       <td style="border: 1px solid #000; padding: 1px 6px; text-align: center;"><div class="label">{{ mjorn_to_grabo.estimated_time }}{% if mjorn_to_grabo.delay_minutes > 0 %} (+{{ mjorn_to_grabo.delay_minutes }}){% endif %}</div></td>
       {% if mjorn_to_grabo.next_departure_time %}
@@ -51,19 +72,22 @@
       <td colspan="2" style="border: none; padding: 1px 6px; text-align: center;"><div class="label">Ingen avgång</div></td>
       {% endif %}
     </tr>
+    <tr>
+      <td colspan="3" style="border: none; padding: 3px 0 0 0; text-align: left;"><div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 4px;">{{ mjorn_to_grabo.line }}</span>Senaste position: {{ mjorn_to_grabo.last_seen.location_text }} ({{ mjorn_to_grabo.last_seen.seen_at_display }})</div></td>
+    </tr>
   </table>
-  <div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 4px;">{{ mjorn_to_grabo.line }}</span>Senaste position: {{ mjorn_to_grabo.last_seen.location_text }} ({{ mjorn_to_grabo.last_seen.seen_at_display }})</div>
 
   <div class="divider"></div>
 
   <table style="width: 100%; border-collapse: collapse;">
     <tr>
-      <td rowspan="2" style="width: 48px; border: none; padding: 0 6px 0 0; text-align: center; vertical-align: middle;">
-        <img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="44" height="22" style="width: 44px; height: 22px;">
+      <td style="width: 48px; border: none; padding: 0 6px 0 0; text-align: left; vertical-align: top;">
+        <img class="image image--contain image-dither" src="{{ grabo_to_goteborg.icon_url }}" width="44" height="22" style="width: 44px; height: 22px; display: block;">
       </td>
-      <td colspan="2" style="border: none; padding: 0; text-align: left;"><div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 4px;">{{ grabo_to_goteborg.line }}</span>GRÅBO &gt; GÖTEBORG</div></td>
+      <td colspan="2" style="border: none; padding: 0; text-align: left; vertical-align: middle;"><div class="label">GRÅBO &gt; GÖTEBORG</div></td>
     </tr>
     <tr>
+      <td style="border: none; padding: 0 6px 0 0; text-align: left; vertical-align: middle;"><div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 0;">{{ grabo_to_goteborg.line }}</span></div></td>
       {% if grabo_to_goteborg.has_departure %}
       <td style="border: 1px solid #000; padding: 1px 6px; text-align: center;"><div class="label">{{ grabo_to_goteborg.estimated_time }}{% if grabo_to_goteborg.delay_minutes > 0 %} (+{{ grabo_to_goteborg.delay_minutes }}){% endif %}</div></td>
       {% if grabo_to_goteborg.next_departure_time %}
@@ -75,8 +99,10 @@
       <td colspan="2" style="border: none; padding: 1px 6px; text-align: center;"><div class="label">Ingen avgång</div></td>
       {% endif %}
     </tr>
+    <tr>
+      <td colspan="3" style="border: none; padding: 3px 0 0 0; text-align: left;"><div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 4px;">{{ grabo_to_goteborg.line }}</span>Senaste position: {{ grabo_to_goteborg.last_seen.location_text }} ({{ grabo_to_goteborg.last_seen.seen_at_display }})</div></td>
+    </tr>
   </table>
-  <div class="label"><span style="background: #000; color: #fff; display: inline-block; padding: 1px 6px; margin-right: 4px;">{{ grabo_to_goteborg.line }}</span>Senaste position: {{ grabo_to_goteborg.last_seen.location_text }} ({{ grabo_to_goteborg.last_seen.seen_at_display }})</div>
 
 </div>
 
