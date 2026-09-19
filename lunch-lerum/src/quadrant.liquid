@@ -3,6 +3,60 @@ Paste this into the "Quadrant" tab of the lunch-lerum plugin's Edit
 Markup screen (separate from the "Full" tab's template.liquid). Compact
 version   for small Mashup panes - just today's lunch, no forecast table.
 
+SIZING (adaptive - read this first; it supersedes every fixed size
+mentioned in the older notes below): the pane is a fixed, non-scrolling
+~400x240 box minus a 40px title bar, and anything taller than it is
+cropped, so "as big as possible" means "as big as still fits TODAY'S
+text", worked out per render in Liquid instead of one fixed size that has
+to fit the worst case. Everything hangs off `pane_h` at the top of the
+markup (170 = content height budget in px, deliberately a bit under the
+~180px believed to be usable). If the real device shows unused room
+under the content, raise it; if the bottom is cropped, lower it - it is
+the only number to touch.
+
+Layout: ONE table row, two cells (56% / 44%). The food icons now sit
+at the top of the LEFT cell (nested table, same as before), so the
+right cell (Dagens kock) gets the pane's full height instead of
+sharing it with an icon row above it - that is what makes a much
+bigger chef photo possible.
+
+Left cell (dish): font is picked from 18/20/22/24/28/32/40px. For each
+candidate a greedy word-wrap is simulated with character counts
+(`d_cur*` / `d_lines*` - Liquid has no functions, hence one block per
+size), and the LARGEST size whose wrapped height fits `text_room`
+(pane_h - 20 label - 48 icon row when there is one) AND whose longest
+word fits on one line wins. Long Swedish compounds are why the
+longest-word check exists: at 32px "Fiskgratäng" would not fit the cell
+width. Hyphens count as break points ("ost- och skinkpaj"), same as a
+browser. Short text (a note like "Höstlov") gets 40px, a 60+ character
+dish still gets 18-22px, all of them bigger than the old 16px
+`description`.
+
+Right cell (Dagens kock): name 20px semibold (1 line up to 12 chars,
+else 2); description 20/18/16px - the largest size that still leaves
+the photo at least `img_min` (80px), else 16px; the photo takes
+whatever height is left (40-150px) through `max-height` (with
+`max-width: 100%` and `width/height: auto` so its aspect ratio never
+distorts). The 42 broforce portraits are 127-193px wide x 200px tall,
+so the cell's ~159px width never limits the photo, its height does.
+
+The chars-per-line numbers in the greedy-wrap blocks were calibrated
+by rendering the real chef descriptions and ~55 realistic school
+dishes in Chromium (DejaVu Sans as a slightly WIDER stand-in for
+Inter, so real text should wrap the same or better) and taking the
+largest value that never under-counted lines, minus one character of
+margin. If a font size changes, redo that calibration rather than
+nudging numbers by feel.
+
+Checked locally at 400x240 (mini Liquid interpreter + Chromium): all
+42 chefs x 18 dishes x 1/4 icons, weekend hemmamat, note-only days,
+no-chef fallback - nothing exceeded `pane_h`. Chef photos come out
+48-102px tall (median 84; was a fixed 55). The three chefs with the
+longest name + description (Boondock Bros, Broniversal Soldier, Col.
+James Broddock) only get 48px. NOT tested on the physical device -
+TRMNL's own stylesheet wasn't available offline, so label height (20px)
+and `.value` margins are assumptions. Check a few real days.
+
 LAYOUT: the dish's food icon(s) sit in their own row at the very TOP of
 the whole pane, centered, above both the "Dagens Lunch" text and the
 "Dagens kock" column - previously a single small icon sat at the BOTTOM
@@ -15,7 +69,8 @@ this pane has a fixed, non-scrolling height: an earlier 60px version
 pushed the dish text + Dagens kock column entirely out of the visible
 area (icons showed, everything below them vanished). The Dagens kock
 photo/description also shrank (55px fixed height) to give the now-bigger
-icon row room without pushing the rest off-pane. The description was
+icon row room without pushing the rest off-pane. [SUPERSEDED - the photo
+is now sized adaptively, see SIZING above.] The description was
 originally truncated at 30 chars, which was too aggressive - see the
 DESCRIPTION LENGTH note near the "Dagens kock" section below for why
 that's now 50.
@@ -60,7 +115,8 @@ CAUTION - the dish-text/Dagens kock section below is a plain HTML
               image. The Dagens kock `<img>` also switched from `max-height: 34%`
               (a percentage height, which needs a sized ancestor to mean anything -
               a `<td>` with no explicit height doesn't give it one) to a fixed
-                `max-height: 55px`.
+                `max-height: 55px`. [SUPERSEDED by SIZING above - the photo height is now
+                computed.]
 
                 ICON CENTERING (superseded - see ICON TABLE AUTO-STRETCH further down
                 for the current approach): the icon-row `<table>` used to rely on
@@ -107,7 +163,9 @@ CAUTION - the dish-text/Dagens kock section below is a plain HTML
                               into a squashed sliver instead of their real shape on a real device;
                               table cells don't have that problem.
 
-                              ICON HORIZONTAL ALIGNMENT (fixed): the icon row used to be its own
+                              ICON HORIZONTAL ALIGNMENT (fixed; the icon table has since moved INTO the
+                              left cell of the single-row table - see SIZING above - so it is centered
+                              over the dish text automatically): the icon row used to be its own
                               separate full-width `<div style="text-align: center;">`, centered over
                                 the ENTIRE pane width - which put it visibly to the right of "Dagens
                                 Lunch"/the dish text below it, since that text only occupies the left
@@ -174,7 +232,8 @@ CAUTION - the dish-text/Dagens kock section below is a plain HTML
                                                             No more `display: inline-table` or auto-sized cells anywhere in this
                                                             file.
 
-                                                            Dish text: switched from `value value--small` (truncated to 40 chars,
+                                                            Dish text (history - now `class="value"` at an adaptive 18-40px, truncated
+                                                            at 64, see SIZING above): switched from `value value--small` (truncated to 40 chars,
                                                             which is what was cutting dish names off mid-word - "Fiskgryta med lax
                                                             och sej serveras me...") to the `description` class, truncated much more
                                                             generously at 70 chars (comfortably fits every dish in the autumn term
@@ -222,78 +281,191 @@ CAUTION - the dish-text/Dagens kock section below is a plain HTML
                                                               truncate: 70 above.
                                                               {%- endcomment -%}
 
-                                                              <div class="layout layout--col layout--center gap--xsmall" style="height: 100%; justify-content: center;">
+                                                              {% assign pane_h = 170 %}
 
-                                                                {% assign show_icon_row = false %}
-                                                                {% assign icon_row_width = 0 %}
-                                                                {% if today.lunch and today.lunch_icon_urls.size > 0 %}
-                                                                {% assign show_icon_row = true %}
-                                                                {% assign icon_row_width = today.lunch_icon_urls.size | times: 44 %}
-                                                                {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
-                                                                {% assign show_icon_row = true %}
-                                                                {% assign icon_row_width = today.vegetarian_icon_urls.size | times: 44 %}
+                                                              {% assign show_icon_row = false %}
+                                                              {% assign icon_row_width = 0 %}
+                                                              {% if today.lunch and today.lunch_icon_urls.size > 0 %}
+                                                              {% assign show_icon_row = true %}
+                                                              {% assign icon_row_width = today.lunch_icon_urls.size | times: 44 %}
+                                                              {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
+                                                              {% assign show_icon_row = true %}
+                                                              {% assign icon_row_width = today.vegetarian_icon_urls.size | times: 44 %}
+                                                              {% endif %}
+
+                                                              {%- comment -%} ===== What the left column says ===== {%- endcomment -%}
+                                                              {% assign dish_label = "" %}
+                                                              {% assign dish_text = "" %}
+                                                              {% if today.lunch %}
+                                                              {% assign dish_label = "Dagens Lunch" %}
+                                                              {% assign dish_text = today.lunch | truncate: 64 %}
+                                                              {% elsif today.vegetarian %}
+                                                              {% assign dish_label = "Dagens Gröna" %}
+                                                              {% assign dish_text = today.vegetarian | truncate: 64 %}
+                                                              {% elsif today.is_weekend %}
+                                                              {% assign dish_label = "Hemmamat " | append: today.weekday %}
+                                                              {% if today.hemmamat and today.weekday == "Lördag" %}
+                                                              {% assign hm_lunch = today.hemmamat.lordag.lunch | truncate: 28 %}
+                                                              {% assign hm_middag = today.hemmamat.lordag.middag | truncate: 28 %}
+                                                              {% assign dish_text = hm_lunch | append: " / " | append: hm_middag %}
+                                                              {% elsif today.hemmamat %}
+                                                              {% assign hm_lunch = today.hemmamat.sondag.lunch | truncate: 28 %}
+                                                              {% assign hm_middag = today.hemmamat.sondag.middag | truncate: 28 %}
+                                                              {% assign dish_text = hm_lunch | append: " / " | append: hm_middag %}
+                                                              {% else %}
+                                                              {% assign dish_text = today.note %}
+                                                              {% endif %}
+                                                              {% elsif today.note %}
+                                                              {% assign dish_label = today.weekday %}
+                                                              {% assign dish_text = today.note %}
+                                                              {% else %}
+                                                              {% assign dish_text = "No lunch info" %}
+                                                              {% endif %}
+
+                                                              {%- comment -%} ===== Biggest dish font that still fits (see SIZING note above) ===== {%- endcomment -%}
+                                                              {% assign text_room = pane_h | minus: 20 %}
+                                                              {% if show_icon_row %}
+                                                              {% assign text_room = text_room | minus: 48 %}
+                                                              {% endif %}
+                                                              {% assign dish_words = dish_text | replace: "-", "- " | split: " " %}
+                                                              {% assign longest_word = 0 %}
+                                                              {% assign d_cur1 = 0 %}{% assign d_lines1 = 1 %}
+                                                              {% assign d_cur2 = 0 %}{% assign d_lines2 = 1 %}
+                                                              {% assign d_cur3 = 0 %}{% assign d_lines3 = 1 %}
+                                                              {% assign d_cur4 = 0 %}{% assign d_lines4 = 1 %}
+                                                              {% assign d_cur5 = 0 %}{% assign d_lines5 = 1 %}
+                                                              {% assign d_cur6 = 0 %}{% assign d_lines6 = 1 %}
+                                                              {% for w in dish_words %}
+                                                              {% assign wl = w | size %}
+                                                              {% if wl > longest_word %}{% assign longest_word = wl %}{% endif %}
+                                                              {% if d_cur1 == 0 %}{% assign d_cur1 = wl %}
+                                                              {% else %}{% assign d_next = d_cur1 | plus: 1 | plus: wl %}
+                                                              {% if d_next <= 17 %}{% assign d_cur1 = d_next %}
+                                                                {% else %}{% assign d_lines1 = d_lines1 | plus: 1 %}{% assign d_cur1 = wl %}{% endif %}
                                                                 {% endif %}
-
-                                                                <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
-                                                                  {% if show_icon_row %}
-                                                                  <tr>
-                                                                    <td style="border: none; padding: 0 4px 4px; text-align: center;"{% if today.dagens_kock %} width="58%"{% else %} colspan="2"{% endif %}>
-                                                                      <table style="width: {{ icon_row_width }}px; margin: 0 auto; border-collapse: collapse; table-layout: fixed;">
-                                                                        <tr>
-                                                                          {% if today.lunch and today.lunch_icon_urls.size > 0 %}
-                                                                          {% for icon_url in today.lunch_icon_urls %}
-                                                                          <td style="border: none; padding: 0; width: 44px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
-                                                                          {% endfor %}
-                                                                          {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
-                                                                          {% for icon_url in today.vegetarian_icon_urls %}
-                                                                          <td style="border: none; padding: 0; width: 44px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
-                                                                          {% endfor %}
-                                                                          {% endif %}
-                                                                        </tr>
-                                                                      </table>
-                                                                    </td>
-                                                                    {% if today.dagens_kock %}<td style="border: none;" width="42%"></td>{% endif %}
-                                                                  </tr>
+                                                                {% if d_cur2 == 0 %}{% assign d_cur2 = wl %}
+                                                                {% else %}{% assign d_next = d_cur2 | plus: 1 | plus: wl %}
+                                                                {% if d_next <= 15 %}{% assign d_cur2 = d_next %}
+                                                                  {% else %}{% assign d_lines2 = d_lines2 | plus: 1 %}{% assign d_cur2 = wl %}{% endif %}
                                                                   {% endif %}
-                                                                  <tr>
-                                                                    <td style="border: none; vertical-align: top; padding: 0 4px; text-align: center;"{% if today.dagens_kock %} width="58%"{% else %} colspan="2"{% endif %}>
-                                                                      {% if today.lunch %}
-                                                                      <div class="label" style="text-align: center;">Dagens Lunch</div>
-                                                                      <div class="description" style="text-align: center;">{{ today.lunch | truncate: 70 }}</div>
-                                                                      {% elsif today.vegetarian %}
-                                                                      <div class="label" style="text-align: center;">Dagens Gröna</div>
-                                                                      <div class="description" style="text-align: center;">{{ today.vegetarian | truncate: 70 }}</div>
-                                                                      {% elsif today.is_weekend %}
-                                                                      <div class="label" style="text-align: center;">Hemmamat {{ today.weekday }}</div>
-                                                                      {% if today.hemmamat and today.weekday == "Lördag" %}
-                                                                      <div class="value value--small" style="text-align: center;">{{ today.hemmamat.lordag.lunch | truncate: 28 }} / {{ today.hemmamat.lordag.middag | truncate: 28 }}</div>
-                                                                      {% elsif today.hemmamat %}
-                                                                      <div class="value value--small" style="text-align: center;">{{ today.hemmamat.sondag.lunch | truncate: 28 }} / {{ today.hemmamat.sondag.middag | truncate: 28 }}</div>
-                                                                      {% else %}
-                                                                      <div class="value" style="text-align: center;">{{ today.note }}</div>
-                                                                      {% endif %}
-                                                                      {% elsif today.note %}
-                                                                      <div class="label" style="text-align: center;">{{ today.weekday }}</div>
-                                                                      <div class="value" style="text-align: center;">{{ today.note }}</div>
-                                                                      {% else %}
-                                                                      <div class="value" style="text-align: center;">No lunch info</div>
-                                                                      {% endif %}
-                                                                    </td>
-
-                                                                    {% if today.dagens_kock %}
-                                                                    <td style="border: none; vertical-align: top; padding: 0 4px; text-align: center;" width="42%">
-                                                                      <div class="label" style="text-align: center;">Dagens kock:</div>
-                                                                      <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: 55px; width: auto; display: block; margin: 0 auto;">
-                                                                      <div class="label" style="text-align: center;">{{ today.dagens_kock.name }}</div>
-                                                                      <div class="description" style="text-align: center;">{{ today.dagens_kock.description | truncate: 50 }}</div>
-                                                                    </td>
+                                                                  {% if d_cur3 == 0 %}{% assign d_cur3 = wl %}
+                                                                  {% else %}{% assign d_next = d_cur3 | plus: 1 | plus: wl %}
+                                                                  {% if d_next <= 14 %}{% assign d_cur3 = d_next %}
+                                                                    {% else %}{% assign d_lines3 = d_lines3 | plus: 1 %}{% assign d_cur3 = wl %}{% endif %}
                                                                     {% endif %}
-                                                                  </tr>
-                                                                </table>
+                                                                    {% if d_cur4 == 0 %}{% assign d_cur4 = wl %}
+                                                                    {% else %}{% assign d_next = d_cur4 | plus: 1 | plus: wl %}
+                                                                    {% if d_next <= 11 %}{% assign d_cur4 = d_next %}
+                                                                      {% else %}{% assign d_lines4 = d_lines4 | plus: 1 %}{% assign d_cur4 = wl %}{% endif %}
+                                                                      {% endif %}
+                                                                      {% if d_cur5 == 0 %}{% assign d_cur5 = wl %}
+                                                                      {% else %}{% assign d_next = d_cur5 | plus: 1 | plus: wl %}
+                                                                      {% if d_next <= 8 %}{% assign d_cur5 = d_next %}
+                                                                        {% else %}{% assign d_lines5 = d_lines5 | plus: 1 %}{% assign d_cur5 = wl %}{% endif %}
+                                                                        {% endif %}
+                                                                        {% if d_cur6 == 0 %}{% assign d_cur6 = wl %}
+                                                                        {% else %}{% assign d_next = d_cur6 | plus: 1 | plus: wl %}
+                                                                        {% if d_next <= 7 %}{% assign d_cur6 = d_next %}
+                                                                          {% else %}{% assign d_lines6 = d_lines6 | plus: 1 %}{% assign d_cur6 = wl %}{% endif %}
+                                                                          {% endif %}
+                                                                          {% endfor %}
+                                                                          {% assign dish_fs = 18 %}{% assign dish_lh = 20 %}
+                                                                          {% assign d_h = d_lines1 | times: 23 %}
+                                                                          {% if d_h <= text_room and longest_word <= 17 %}{% assign dish_fs = 20 %}{% assign dish_lh = 23 %}{% endif %}
+                                                                            {% assign d_h = d_lines2 | times: 25 %}
+                                                                            {% if d_h <= text_room and longest_word <= 15 %}{% assign dish_fs = 22 %}{% assign dish_lh = 25 %}{% endif %}
+                                                                              {% assign d_h = d_lines3 | times: 27 %}
+                                                                              {% if d_h <= text_room and longest_word <= 14 %}{% assign dish_fs = 24 %}{% assign dish_lh = 27 %}{% endif %}
+                                                                                {% assign d_h = d_lines4 | times: 31 %}
+                                                                                {% if d_h <= text_room and longest_word <= 11 %}{% assign dish_fs = 28 %}{% assign dish_lh = 31 %}{% endif %}
+                                                                                  {% assign d_h = d_lines5 | times: 36 %}
+                                                                                  {% if d_h <= text_room and longest_word <= 8 %}{% assign dish_fs = 32 %}{% assign dish_lh = 36 %}{% endif %}
+                                                                                    {% assign d_h = d_lines6 | times: 44 %}
+                                                                                    {% if d_h <= text_room and longest_word <= 7 %}{% assign dish_fs = 40 %}{% assign dish_lh = 44 %}{% endif %}
 
-                                                              </div>
+                                                                                      {%- comment -%} ===== Dagens kock: description font + how tall the photo can be ===== {%- endcomment -%}
+                                                                                      {% if today.dagens_kock %}
+                                                                                      {% assign kname_lines = 1 %}
+                                                                                      {% if today.dagens_kock.name.size > 12 %}{% assign kname_lines = 2 %}{% endif %}
+                                                                                      {% assign kname_h = kname_lines | times: 22 %}
+                                                                                      {% assign kdesc = today.dagens_kock.description | truncate: 50 %}
+                                                                                      {% assign kdesc_words = kdesc | replace: "-", "- " | split: " " %}
+                                                                                      {% assign img_room = pane_h | minus: 24 | minus: kname_h %}
+                                                                                      {% assign img_min = 80 %}
+                                                                                      {% assign k_cur1 = 0 %}{% assign k_lines1 = 1 %}
+                                                                                      {% assign k_cur2 = 0 %}{% assign k_lines2 = 1 %}
+                                                                                      {% assign k_cur0 = 0 %}{% assign k_lines0 = 1 %}
+                                                                                      {% for w in kdesc_words %}
+                                                                                      {% assign wl = w | size %}
+                                                                                      {% if k_cur0 == 0 %}{% assign k_cur0 = wl %}
+                                                                                      {% else %}{% assign k_next = k_cur0 | plus: 1 | plus: wl %}
+                                                                                      {% if k_next <= 18 %}{% assign k_cur0 = k_next %}
+                                                                                        {% else %}{% assign k_lines0 = k_lines0 | plus: 1 %}{% assign k_cur0 = wl %}{% endif %}
+                                                                                        {% endif %}
+                                                                                        {% if k_cur1 == 0 %}{% assign k_cur1 = wl %}
+                                                                                        {% else %}{% assign k_next = k_cur1 | plus: 1 | plus: wl %}
+                                                                                        {% if k_next <= 15 %}{% assign k_cur1 = k_next %}
+                                                                                          {% else %}{% assign k_lines1 = k_lines1 | plus: 1 %}{% assign k_cur1 = wl %}{% endif %}
+                                                                                          {% endif %}
+                                                                                          {% if k_cur2 == 0 %}{% assign k_cur2 = wl %}
+                                                                                          {% else %}{% assign k_next = k_cur2 | plus: 1 | plus: wl %}
+                                                                                          {% if k_next <= 11 %}{% assign k_cur2 = k_next %}
+                                                                                            {% else %}{% assign k_lines2 = k_lines2 | plus: 1 %}{% assign k_cur2 = wl %}{% endif %}
+                                                                                            {% endif %}
+                                                                                            {% endfor %}
+                                                                                            {% assign kdesc_fs = 16 %}{% assign kdesc_lh = 18 %}
+                                                                                            {% assign kdesc_h = k_lines0 | times: 18 %}
+                                                                                            {% assign k_h = k_lines1 | times: 20 %}
+                                                                                            {% assign k_left = img_room | minus: k_h %}
+                                                                                            {% if k_left >= img_min %}{% assign kdesc_fs = 18 %}{% assign kdesc_lh = 20 %}{% assign kdesc_h = k_h %}{% endif %}
+                                                                                            {% assign k_h = k_lines2 | times: 22 %}
+                                                                                            {% assign k_left = img_room | minus: k_h %}
+                                                                                            {% if k_left >= img_min %}{% assign kdesc_fs = 20 %}{% assign kdesc_lh = 22 %}{% assign kdesc_h = k_h %}{% endif %}
+                                                                                            {% assign kimg_h = img_room | minus: kdesc_h %}
+                                                                                            {% if kimg_h < 40 %}{% assign kimg_h = 40 %}{% endif %}
+                                                                                              {% if kimg_h > 150 %}{% assign kimg_h = 150 %}{% endif %}
+                                                                                              {% endif %}
 
-                                                              <div class="title_bar">
-                                                                <span class="title">Matn</span>
-                                                                <span class="instance">{{ updated_display }}</span>
-                                                              </div>
+                                                                                              <div class="layout layout--col layout--center gap--xsmall" style="height: 100%; justify-content: center;">
+
+                                                                                                <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                                                                                                  <tr>
+                                                                                                    <td style="border: none; vertical-align: middle; padding: 0 4px; text-align: center;"{% if today.dagens_kock %} width="56%"{% else %} colspan="2"{% endif %}>
+                                                                                                      {% if show_icon_row %}
+                                                                                                      <table style="width: {{ icon_row_width }}px; margin: 0 auto 4px; border-collapse: collapse; table-layout: fixed;">
+                                                                                                        <tr>
+                                                                                                          {% if today.lunch and today.lunch_icon_urls.size > 0 %}
+                                                                                                          {% for icon_url in today.lunch_icon_urls %}
+                                                                                                          <td style="border: none; padding: 0; width: 44px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+                                                                                                          {% endfor %}
+                                                                                                          {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
+                                                                                                          {% for icon_url in today.vegetarian_icon_urls %}
+                                                                                                          <td style="border: none; padding: 0; width: 44px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+                                                                                                          {% endfor %}
+                                                                                                          {% endif %}
+                                                                                                        </tr>
+                                                                                                      </table>
+                                                                                                      {% endif %}
+                                                                                                      {% if dish_label != "" %}
+                                                                                                      <div class="label" style="text-align: center;">{{ dish_label }}</div>
+                                                                                                      {% endif %}
+                                                                                                      <div class="value" style="text-align: center; font-size: {{ dish_fs }}px; line-height: {{ dish_lh }}px; font-weight: 500; overflow-wrap: anywhere;">{{ dish_text }}</div>
+                                                                                                    </td>
+
+                                                                                                    {% if today.dagens_kock %}
+                                                                                                    <td style="border: none; vertical-align: middle; padding: 0 4px; text-align: center;" width="44%">
+                                                                                                      <div class="label" style="text-align: center;">Dagens kock:</div>
+                                                                                                      <img class="image image--contain image-dither" src="{{ today.dagens_kock.image_url }}" style="max-height: {{ kimg_h }}px; max-width: 100%; width: auto; height: auto; display: block; margin: 2px auto;">
+                                                                                                      <div class="value" style="text-align: center; font-size: 20px; line-height: 22px; font-weight: 600;">{{ today.dagens_kock.name }}</div>
+                                                                                                      <div class="value" style="text-align: center; font-size: {{ kdesc_fs }}px; line-height: {{ kdesc_lh }}px; font-weight: 500;">{{ kdesc }}</div>
+                                                                                                    </td>
+                                                                                                    {% endif %}
+                                                                                                  </tr>
+                                                                                                </table>
+
+                                                                                              </div>
+
+                                                                                              <div class="title_bar">
+                                                                                                <span class="title">Matn</span>
+                                                                                                <span class="instance">{{ updated_display }}</span>
+                                                                                              </div>
