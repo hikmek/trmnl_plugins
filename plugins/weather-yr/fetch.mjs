@@ -180,6 +180,26 @@ function iconUrl(code) {
   return `${ICON_BASE_URL}/${iconForCode(code)}-${randomVariant()}.png?v=${ICON_VERSION}`;
 }
 
+// --- Random Banksy icons (Quadrant view) ------------------------------------
+// Pixelated Banksy icons made by generate-banksy-icons.mjs
+// (icons/banksy-<id>.png). Picks `count` DIFFERENT ones at random each run
+// (one for the top row, one per day-part block). Discovers whatever files
+// exist, so it degrades gracefully: with fewer files than needed some
+// repeat, and with none at all every URL is null and the template just
+// leaves those cells out.
+async function banksyIconUrls(count) {
+  let files = [];
+  try {
+    const { readdir } = await import("node:fs/promises");
+    files = (await readdir(path.join(__dirname, "icons"))).filter((f) => /^banksy-.+\.png$/.test(f));
+  } catch {
+    files = [];
+  }
+  if (!files.length) return Array(count).fill(null);
+  const shuffled = [...files].sort(() => Math.random() - 0.5);
+  return Array.from({ length: count }, (_, i) => `${ICON_BASE_URL}/${shuffled[i % shuffled.length]}?v=${ICON_VERSION}`);
+}
+
 async function loadSymbolMap() {
   const raw = await import("node:fs/promises").then((fs) =>
     fs.readFile(path.join(__dirname, "symbol_map.json"), "utf8")
@@ -318,6 +338,75 @@ async function fetchPreviousRainState(liveDataUrl) {
   }
 }
 
+// --- Day-part blocks (Quadrant view) ----------------------------------------
+// Four fixed local-time windows, always in this order (06-12, 12-18, 18-00,
+// 00-06). Each block shows the NEXT not-yet-finished occurrence of its
+// window: a window still in progress uses today's (only its remaining
+// entries), a window that has already ended today rolls over to tomorrow.
+// E.g. at 11:00 -> 06-12 today, 12-18 today, 18-00 today, 00-06 tomorrow;
+// at 20:00 -> 06-12 tomorrow, 12-18 tomorrow, 18-00 today, 00-06 tomorrow.
+const DAY_PARTS = [
+  { start: 6, end: 12, label: "06–12" },
+  { start: 12, end: 18, label: "12–18" },
+  { start: 18, end: 24, label: "18–00" },
+  { start: 0, end: 6, label: "00–06" },
+];
+
+function addDaysToKey(dateKey, days) {
+  // Pure calendar arithmetic on YYYY-MM-DD (in UTC, so DST can't shift it).
+  const d = new Date(`${dateKey}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function buildDayParts(timeseries, nowMs, todayKey, readable) {
+  const nowHour = localHour(new Date(nowMs).toISOString());
+  return DAY_PARTS.map((part) => {
+    const dateKey = nowHour >= part.end ? addDaysToKey(todayKey, 1) : todayKey;
+    const entries = timeseries.filter((e) => {
+      if (new Date(e.time).getTime() < nowMs - 60 * 60 * 1000) return false;
+      if (localDateKey(e.time) !== dateKey) return false;
+      const h = localHour(e.time);
+      return h >= part.start && h < part.end;
+    });
+    if (!entries.length) {
+      return { label: part.label, date: dateKey, temperature: null, condition_code: null, condition_text: null, icon: null, icon_url: null };
+    }
+
+    const temps = entries
+      .map((e) => e.data.instant.details.air_temperature)
+      .filter((t) => typeof t === "number");
+    const temperature = temps.length ? Math.round(temps.reduce((s, t) => s + t, 0) / temps.length) : null;
+
+    // Representative symbol: yr.no's own 6-hour summary from the entry at the
+    // window's start hour when we have it (exactly what yr.no shows for its
+    // 00-06/06-12/12-18/18-24 periods); otherwise (window already in
+    // progress) the remaining entry closest to the window's midpoint.
+    const startEntry = entries.find((e) => localHour(e.time) === part.start);
+    let symbol = startEntry?.data.next_6_hours?.summary?.symbol_code || null;
+    if (!symbol) {
+      const mid = (part.start + part.end) / 2;
+      const withSymbol = entries.filter((e) => pickSymbol(e));
+      const candidates = withSymbol.length ? withSymbol : entries;
+      let best = candidates[0];
+      for (const e of candidates) {
+        if (Math.abs(localHour(e.time) + 0.5 - mid) < Math.abs(localHour(best.time) + 0.5 - mid)) best = e;
+      }
+      symbol = pickSymbol(best);
+    }
+
+    return {
+      label: part.label,
+      date: dateKey,
+      temperature,
+      condition_code: symbol,
+      condition_text: readable(symbol),
+      icon: iconForCode(symbol),
+      icon_url: iconUrl(symbol),
+    };
+  });
+}
+
 const LIVE_DATA_URL = "https://hikmek.github.io/trmnl_plugins/weather-yr/data.json";
 const MIN_INTERVAL_MINUTES = 25; // target ~30 min; a bit under to absorb GitHub Actions schedule jitter
 
@@ -394,7 +483,11 @@ async function main() {
       : "Inget regn i sikte närmaste 60 min!";
   }
 
+  // [0] = top row, [1..4] = the four day-part blocks
+  const banksyUrls = await banksyIconUrls(1 + DAY_PARTS.length);
+
   const current = {
+    banksy_icon_url: banksyUrls[0],
     temperature: averagedTemperature,
     temperature_sources: Object.fromEntries(temperatureReadings.map((r) => [r.source, round1(r.value)])),
     condition_code: nowSymbol,
@@ -479,6 +572,10 @@ async function main() {
     location: LOCATION,
     current,
     today: { high: today.high, low: today.low },
+    day_parts: buildDayParts(timeseries, nowMs, todayKey, readable).map((p, i) => ({
+      ...p,
+      banksy_icon_url: banksyUrls[1 + i],
+    })),
     forecast,
   };
 

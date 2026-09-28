@@ -1,75 +1,81 @@
 {%- comment -%}
   Paste this into the "Quadrant" tab of the weather-yr plugin's Edit Markup
   screen (separate from the "Full" tab's template.liquid). Compact version
-  for small Mashup panes - just current temp + condition + today's range.
+  for small Mashup panes.
 
   Font-family is set inline to force smooth Inter instead of the default
   pixel font, scoped to just this plugin (see template.liquid for why).
 
-  IMPORTANT LESSON (learned the hard way, twice): a Quadrant pane is only
-  ~1/4 of the screen and is NOT wide enough for an icon + the temperature
-  text sharing the same row. TRMNL centers a row's content, so when the
-  row is wider than the pane, both edges get clipped off equally - which
-  silently deletes the icons at the ends AND chops up the temperature text
-  in the middle (this looked like a corrupt-PNG or font-size bug, but it
-  is plain horizontal overflow/clipping - confirmed because the
-  condition/H-L/rain-forecast text rows below, which are plain stacked
-  text with no icon sharing the row, always rendered perfectly fine).
-  An earlier commit (35fb824) already hit and fixed this exact issue once
-  by switching to a column layout with the icon stacked ABOVE the
-  temperature rather than beside it - keep that pattern. The rule for this
-  file going forward: never put an <img> on the same row as the
-  temperature value; icons only ever share a row with OTHER icons (narrow),
-  never with value/text content.
+  Layout (top to bottom):
+    1. One row: random Banksy icon + weather icon + current temperature +
+       clothing/rain/wind icon(s).
+    2. Four day-part blocks in a 2x2 grid (06-12 | 12-18 on top, 18-00 |
+       00-06 below). Each block = random Banksy icon + weather icon + time
+       label over temperature. From day_parts in data.json (see
+       buildDayParts() / banksyIconUrls() in fetch.mjs).
+    3. Rain forecast text.
+  (No condition description and no H/L line - both removed on request.)
 
-  Layout: weather icon + clothing/rain/wind icon(s) together in one
-  icon-only row on top (sized big enough to actually read at a glance -
-  44px, up from an earlier too-small 28px that made them hard to tell
-  apart), then the temperature alone on its own row, then text labels
-  below. The temperature keeps a real TRMNL value--* class (value--base)
-  rather than a custom inline font-size - an arbitrary font-size outside
-  TRMNL's own pixel/bitmap-font size set corrupted the digits in earlier
-  testing. 44px x up to 4 icons (weather + clothing + optional rain gear +
-  optional wind gear) + gaps is still comfortably narrower than the
-  "H xx.x / L xx.x" text row below, which has always rendered fine, so
-  this shouldn't reintroduce the row-overflow issue described above.
+  Banksy icons come from generate-banksy-icons.mjs. Until that has been
+  run, their URLs are null and those cells are simply left out.
 
-  Rain forecast text: current.rain_forecast_text ("Inget regn i sikte
-  närmaste 60 min!", "Det börjar regna kl HH:MM idag!", or a "Lätt regn kl
-  HH:MM-HH:MM" range while it's already raining - see fetch.mjs), centered
-  below everything else.
+  ROW WIDTH RULE (learned the hard way, twice): a Quadrant pane is only
+  ~1/4 of the screen. TRMNL centers a row's content, so a row wider than
+  the pane is clipped equally on both edges - which silently deleted the
+  icons at the ends AND chopped up the temperature digits in the middle
+  (commit 35fb824 and later). Icons + temperature on one row are OK, but
+  ONLY as separate <td> cells with small icons. Worst case top row: 5
+  icons x 40px + temperature cell = roughly 290px of a ~400px pane; each
+  2x2 row is roughly 2 x (32+32+50) + gap = ~260px. If you add anything
+  to a row, re-check the total width.
 
-  All icon <img> tags use class="image image--contain image-dither" - NOT
-  just "image" - see template.liquid's matching comment for why (matches
-  plugins/broforce's confirmed-working icon markup). That alone was NOT
-  enough to fix this plugin's icons though (still just a placeholder blob
-  after adding those classes) - every image anywhere in this whole repo
-  that has ever rendered correctly (broforce's portrait, banksy's picture,
-  even this plugin's own forecast-table icon) has always been a single
-  lone <img>, never sitting directly next to another <img> as a flex
-  sibling - which is exactly what this icon row used to do (up to 3 <img>
-  tags side by side). So the icons are now each in their own <table> cell
-  instead - matching the forecast table's proven "single <img> inside a
-  <td>" pattern - rather than flex siblings in one <div class="layout
-  layout--row">.
+  All icon <img> tags use class="image image--contain image-dither" and
+  each sits alone in its own <td> - never as flex siblings of another
+  <img>. Both were needed for icons to render at all on the device (see
+  template.liquid and README for the full story).
+
+  The temperature keeps a real TRMNL value--* class rather than a custom
+  inline font-size - arbitrary font sizes corrupted the digits in earlier
+  testing.
 {%- endcomment -%}
 
 <div class="layout layout--col layout--center gap--small" style="font-family: 'Inter', sans-serif;">
   <table class="table" style="border: none; width: auto; margin: 0 auto;">
     <tr>
-      <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ current.icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
-      <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ current.clothing_icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+      {% if current.banksy_icon_url %}
+      <td style="border: none; padding: 0 2px; vertical-align: middle;"><img class="image image--contain image-dither" src="{{ current.banksy_icon_url }}" width="36" height="36" style="width: 36px; height: 36px;"></td>
+      {% endif %}
+      <td style="border: none; padding: 0 2px; vertical-align: middle;"><img class="image image--contain image-dither" src="{{ current.icon_url }}" width="36" height="36" style="width: 36px; height: 36px;"></td>
+      <td style="border: none; padding: 0 6px; vertical-align: middle;"><span class="value value--small">{{ current.temperature }}°</span></td>
+      <td style="border: none; padding: 0 2px; vertical-align: middle;"><img class="image image--contain image-dither" src="{{ current.clothing_icon_url }}" width="36" height="36" style="width: 36px; height: 36px;"></td>
       {% if current.needs_rain_gear %}
-      <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ current.rain_gear_icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+      <td style="border: none; padding: 0 2px; vertical-align: middle;"><img class="image image--contain image-dither" src="{{ current.rain_gear_icon_url }}" width="36" height="36" style="width: 36px; height: 36px;"></td>
       {% endif %}
       {% if current.needs_wind_gear %}
-      <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ current.wind_gear_icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+      <td style="border: none; padding: 0 2px; vertical-align: middle;"><img class="image image--contain image-dither" src="{{ current.wind_gear_icon_url }}" width="36" height="36" style="width: 36px; height: 36px;"></td>
       {% endif %}
     </tr>
   </table>
-  <div class="value value--base">{{ current.temperature }}°</div>
-  <div class="label">{{ current.condition_text }}</div>
-  <div class="description">H {{ today.high }}° / L {{ today.low }}°</div>
+
+  <table class="table" style="border: none; width: auto; margin: 0 auto;">
+    {% for row_start in (0..1) %}
+    <tr>
+      {% for col in (0..1) %}
+      {% assign idx = row_start | times: 2 | plus: col %}
+      {% assign part = day_parts[idx] %}
+      {% if part.banksy_icon_url %}
+      <td style="border: none; padding: 2px 2px 2px {% if col == 1 %}14px{% else %}2px{% endif %}; vertical-align: middle;"><img class="image image--contain image-dither" src="{{ part.banksy_icon_url }}" width="32" height="32" style="width: 32px; height: 32px;"></td>
+      {% endif %}
+      <td style="border: none; padding: 2px; vertical-align: middle;">{% if part.icon_url %}<img class="image image--contain image-dither" src="{{ part.icon_url }}" width="32" height="32" style="width: 32px; height: 32px;">{% endif %}</td>
+      <td style="border: none; padding: 2px 4px; vertical-align: middle; text-align: left;">
+        <div class="description">{{ part.label }}</div>
+        <div class="label">{% if part.temperature != nil %}{{ part.temperature }}°{% else %}–{% endif %}</div>
+      </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </table>
+
   <div class="description">{{ current.rain_forecast_text }}</div>
 </div>
 

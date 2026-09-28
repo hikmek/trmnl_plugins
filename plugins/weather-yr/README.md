@@ -75,6 +75,14 @@ temperature" below.
     "rain_forecast_text": "Inget regn i sikte närmaste 60 min!" // or "Det börjar regna kl 19:30 idag!" or "Lätt regn kl 18:04–20:00" or "Lätt regn sedan kl 18:04"
   },
   "today": { "high": 16.5, "low": 9.8 },
+  // Quadrant view's four blocks, always in this order. Each is the next
+  // not-yet-finished occurrence of that local-time window (in progress -> today,
+  // already ended today -> tomorrow). See buildDayParts() in fetch.mjs.
+  "day_parts": [
+    { "label": "06–12", "date": "2026-09-08", "temperature": 12, "condition_code": "cloudy", "condition_text": "Mulet", "icon": "cloudy", "icon_url": "https://hikmek.github.io/trmnl_plugins/weather-yr/icons/cloudy-1.png" }
+    // ...12–18, 18–00, 00–06 (temperature = rounded mean of the window's entries;
+    // symbol = yr.no's next_6_hours summary at the window start, else the entry nearest the midpoint)
+  ],
   "forecast": [
     {
       "date": "2026-09-07",
@@ -170,10 +178,15 @@ earlier layout that put the weather icon, temperature, and clothing icons
 all side by side in one hero row - that got cramped once a third
 (wind-gear) icon could join the rain-gear icon next to the outfit icon.
 
-`template.quadrant.liquid` does **not** use that same top/bottom split -
-see the "Quadrant icon+text overflow" note below for why, and what it does
-instead (all icons - weather + clothing + optional rain/wind gear -
-stacked together in one icon-only row, temperature alone on its own row).
+`template.quadrant.liquid` does **not** use that same top/bottom split.
+Its top row holds a random Banksy icon, the weather icon, the current
+temperature and the clothing/rain/wind icons side by side (each in its
+own `<td>`, 36px icons, roughly 290px wide at most - see the "Quadrant
+icon+text overflow" note below for why the width matters). Below that
+are the four day-part blocks in a 2x2 grid (06–12 | 12–18, 18–00 |
+00–06; each a Banksy icon, a 32px weather icon, and the time label over
+the temperature, from `day_parts`), then the rain forecast text. There
+is no condition description or H/L line in this view.
 
 ## Rain forecast text
 
@@ -232,10 +245,13 @@ condition/H-L/rain-forecast text rows underneath, which are plain stacked
 text with no icon sharing the row, and always rendered perfectly). An
 earlier commit (`35fb824`) had already hit and fixed this exact issue once
 by switching the icon to sit *above* the temperature instead of beside it;
-a later redesign reintroduced the row layout and broke it again. The rule
-going forward: in `template.quadrant.liquid`, never put an `<img>` on the
-same row as the temperature value - icons may only share a row with other
-icons (which are narrow enough to fit), never with `value`/text content.
+a later redesign reintroduced the row layout and broke it again. The
+current layout puts icons and the temperature on one row again (by
+request), but as separate `<td>` cells in a plain table with small icons
+and a `value--small` temperature, so the whole row stays well inside the
+pane. The rule going forward: in `template.quadrant.liquid`, keep that
+top row's total width comfortably under the pane width (~400px), and
+re-check it whenever anything is added to it.
 
 A different fix that was tried and did *not* actually resolve this
 particular symptom, kept here so it isn't re-tried: removing the custom
@@ -378,6 +394,30 @@ using the exact same grid math, as this repo's own history has done):
 node plugins/weather-yr/generate-icons.mjs
 node plugins/weather-yr/generate-clothing-icons.mjs
 ```
+
+## Banksy icons (Quadrant view)
+
+The Quadrant view shows a random pixelated Banksy icon at the start of the
+top row and one before each of the four day-part blocks (five different
+ones per run). They're made by `generate-banksy-icons.mjs` from the same
+CC-licensed Wikimedia Commons photos as `plugins/banksy` (it reads
+`../banksy/sources.json`), but finer than the banksy gallery: square
+center crop, 32x32 grid (vs 24 across), 128px, saved as 8-bit RGB PNGs
+(see the 1-bit PNG bug above). Output: `icons/banksy-<id>.png`.
+
+`fetch.mjs`'s `banksyIconUrls()` picks from whichever `banksy-*.png` files
+exist and writes `current.banksy_icon_url` and `day_parts[].banksy_icon_url`.
+With no files yet those are `null` and the template leaves the cells out.
+
+Run it once (and again after adding artwork to `banksy/sources.json`; existing
+files are skipped, so delete one to regenerate it), then commit the PNGs:
+
+```powershell
+node plugins/weather-yr/generate-banksy-icons.mjs
+```
+
+Attribution for each photo (CC BY-SA etc.) is in `banksy/sources.json`; the
+Quadrant pane has no room to show it.
 
 ## Language: Swedish only
 
