@@ -86,10 +86,25 @@ node plugins/lunch-lerum/generate-word-icons.mjs
 **No bowls:** all food icons are standalone objects now - the 15 that used
 to sit on a bowl (chicken, fish, salmon, meatballs, meatloaf, sausage,
 pancake, pasta, pie, pot, rice, soup, taco, casserole, generic) were redrawn
-in `generate-word-icons.mjs` (e.g. chicken is a drumstick with its bone,
-pasta is spaghetti twirled on a fork, generic is a plate with fork and
-knife). Don't re-run `generate-icons.mjs` for those - it would bring the
+in `generate-word-icons.mjs` (e.g. chicken is a whole chicken, pasta is
+penne rigate, rice is a heap of grains with chopsticks, generic is a plate
+with fork and knife). Don't re-run `generate-icons.mjs` for those - it would bring the
 bowls back.
+
+**Names -> portraits:** when a dish contains a person's name, one of its
+icons is a dithered pixel portrait of a well-known person with that name:
+"Pasta **Alfredo**" -> Alfredo Di Stéfano, "**Stroganoff**" -> Count
+Alexander Stroganov (the dish's namesake), "Sloppy **Joes**" -> Joe Cocker.
+Sources (public-domain photos/paintings on Wikimedia Commons, with a face
+crop) are in `name_portraits.json`; `generate-name-portraits.mjs` makes
+`icons/name-<id>.png` (needs `sharp`, like the Banksy generator; dithered
+rather than thresholded, since faces turn into blobs otherwise). To add a
+name: add an entry to the JSON, a rule `{ re: /name/, icon: "name-<id>" }`
+to `WORD_ICON_RULES` in `fetch.mjs`, and re-run:
+
+```powershell
+node plugins/lunch-lerum/generate-name-portraits.mjs
+```
 
 Icon sizes shrink with the count so the row always fits: Quadrant 44px
 (1-4 icons), 40px (5), 34px (6); Full view today 64/56/46/38px; the

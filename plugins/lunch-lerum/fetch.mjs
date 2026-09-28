@@ -151,6 +151,11 @@ async function pickDagensKock() {
 // Icons: the original bowl-style set from generate-icons.mjs plus the
 // standalone word icons from generate-word-icons.mjs.
 const WORD_ICON_RULES = [
+  // Names -> pixelated portrait of a well-known person with that name
+  // (generate-name-portraits.mjs / name_portraits.json).
+  { re: /alfredo/, icon: "name-alfredo" },
+  { re: /stroganoff|stroganov/, icon: "name-stroganov" },
+  { re: /^joes?$/, icon: "name-joe" },
   { re: /kockens|^kock/, icon: "chef" },
   { re: /gästens|^gäst/, icon: "people" },
   { re: /grön|^veg/, icon: "leaf" },
@@ -189,7 +194,7 @@ const WORD_ICON_RULES = [
   { re: /taco/, icon: "taco" },
   { re: /sopp|buff[eé]/, icon: "soup" },
   { re: /paj/, icon: "pie" },
-  { re: /gryta|gulasch|stroganoff|bolognese|chili|curry/, icon: "pot" },
+  { re: /gryta|gulasch|bolognese|chili|curry/, icon: "pot" },
   { re: /gratäng|moussaka/, icon: "casserole" },
   { re: /färs(?!k)|limpa|biff/, icon: "meatloaf" }, // not "färsk" (fresh)
 ];
@@ -229,8 +234,20 @@ function iconsForDish(text) {
   return icons.length ? icons : ["generic"];
 }
 
+// Cache-busting suffix (same fix as weather-yr): icon filenames never
+// change, so when an icon's artwork changes (e.g. the bowl-free redraw)
+// something between GitHub Pages and the device can keep serving the old
+// cached bytes for the same URL. The short commit SHA (GitHub Actions sets
+// GITHUB_SHA; falls back to today's date locally) makes the URL change
+// whenever the code/icons might have.
+// Bump when icons or WORD_ICON_RULES change, so today's data is refetched
+// right away (see main()'s daily-throttle check).
+const ICON_SET = 3;
+
+const ICON_VERSION = (process.env.GITHUB_SHA || new Date().toISOString().slice(0, 10)).slice(0, 8);
+
 function iconUrls(icons) {
-  return icons.map((icon) => `${ICON_BASE_URL}/${icon}.png`);
+  return icons.map((icon) => `${ICON_BASE_URL}/${icon}.png?v=${ICON_VERSION}`);
 }
 
 function stripTags(html) {
@@ -468,10 +485,10 @@ async function main() {
   // guarantees a fresh fetch happens promptly once the Europe/Stockholm
   // date actually changes, so "today's lunch" never keeps showing
   // yesterday's dish for a stretch after midnight.
-  // Also refetches when the published data is still in the old format (no
-  // `dish` field) - so a format change shows up right away instead of the
-  // next day.
-  if (await shouldSkipDailyFetch(LIVE_DATA_URL, (json) => (json.today && "dish" in json.today ? json.today.date : null), TIMEZONE)) {
+  // Also refetches when the published data was made with an older icon set
+  // (ICON_SET below) - so new icons/rules show up right away instead of the
+  // next day. Bump ICON_SET whenever icons or WORD_ICON_RULES change.
+  if (await shouldSkipDailyFetch(LIVE_DATA_URL, (json) => (json.icon_set === ICON_SET ? json.today?.date : null), TIMEZONE)) {
     console.log("Skipping lunch-lerum fetch - already have today's menu published");
     return;
   }
@@ -526,6 +543,7 @@ async function main() {
 
   const output = {
     plugin: "lunch-lerum",
+    icon_set: ICON_SET,
     source_url: SOURCE_URL,
     term: TERM_LABEL,
     generated_at: new Date().toISOString(),

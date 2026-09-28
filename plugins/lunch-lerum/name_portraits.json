@@ -1,0 +1,36 @@
+[
+  {
+    "id": "alfredo",
+    "menu_word": "Alfredo",
+    "person": "Alfredo Di Stéfano (footballer)",
+    "file": "DiStefanoPuskas.jpg",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/0/0d/DiStefanoPuskas.jpg",
+    "source_page": "https://commons.wikimedia.org/wiki/File:DiStefanoPuskas.jpg",
+    "license": "Public domain",
+    "attribution": "Aftonbladet arkiv",
+    "crop": [0.08, 0.04, 0.5, 0.42]
+  },
+  {
+    "id": "stroganov",
+    "menu_word": "Stroganoff",
+    "person": "Count Alexander Grigoryevich Stroganov (namesake of beef Stroganoff)",
+    "file": "Alexander Grigorevich Stroganov.jpg",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/d/db/Alexander_Grigorevich_Stroganov.jpg",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Alexander_Grigorevich_Stroganov.jpg",
+    "license": "Public domain",
+    "attribution": "Unknown author",
+    "crop": [0.33, 0.12, 0.67, 0.46]
+  },
+  {
+    "id": "joe",
+    "menu_word": "Joe / Joes",
+    "person": "Joe Cocker (singer)",
+    "file": "Joe cocker 1970.JPG",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Joe_cocker_1970.JPG",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Joe_cocker_1970.JPG",
+    "license": "Public domain",
+    "attribution": "A & M Records (promotional photo)",
+    "crop": [0.2, 0.08, 0.68, 0.56],
+    "gamma": 0.75
+  }
+]
