@@ -303,13 +303,19 @@ CAUTION - the dish-text/Dagens kock section below is a plain HTML
                                                               {%- comment -%} ===== What the left column says ===== {%- endcomment -%}
                                                               {% assign dish_label = "" %}
                                                               {% assign dish_text = "" %}
+                                                              {% assign small_text = "" %}
                                                               {% if today.dish %}
                                                               {% if today.dish_is_vegetarian %}
                                                               {% assign dish_label = "Dagens Gröna" %}
-                                                              {% else %}
-                                                              {% assign dish_label = "Ingen grön idag" %}
-                                                              {% endif %}
                                                               {% assign dish_text = today.dish | truncate: 64 %}
+                                                              {% else %}
+                                                              {%- comment -%}
+                                                              No vegetarian dish: the NOTICE is the big text (auto-sized like a
+                                                              dish) and the meat dish goes underneath in small text (small_text).
+                                                              {%- endcomment -%}
+                                                              {% assign dish_text = "Ingen vegetarisk lunch på schemat" %}
+                                                              {% assign small_text = today.dish | truncate: 64 %}
+                                                              {% endif %}
                                                               {% elsif today.is_weekend %}
                                                               {% assign dish_label = "Hemmamat " | append: today.weekday %}
                                                               {% if today.hemmamat and today.weekday == "Lördag" %}
@@ -332,6 +338,12 @@ CAUTION - the dish-text/Dagens kock section below is a plain HTML
 
                                                               {%- comment -%} ===== Biggest dish font that still fits (see SIZING note above) ===== {%- endcomment -%}
                                                               {% assign text_room = pane_h | minus: 20 %}
+                                                              {% if small_text != "" %}
+                                                              {%- comment -%} room for the small meat-dish text: ~22 chars per line at 15px, 18px per line {%- endcomment -%}
+                                                              {% assign small_lines = small_text.size | plus: 21 | divided_by: 22 %}
+                                                              {% assign small_h = small_lines | times: 18 %}
+                                                              {% assign text_room = text_room | minus: small_h %}
+                                                              {% endif %}
                                                               {% if show_icon_row %}
                                                               {% assign icon_row_h = icon_px | plus: 4 %}
                                                               {% assign text_room = text_room | minus: icon_row_h %}
@@ -453,6 +465,9 @@ CAUTION - the dish-text/Dagens kock section below is a plain HTML
                                                                                                       <div class="label" style="text-align: center;">{{ dish_label }}</div>
                                                                                                       {% endif %}
                                                                                                       <div class="value" style="text-align: center; font-size: {{ dish_fs }}px; line-height: {{ dish_lh }}px; font-weight: 500; overflow-wrap: anywhere;">{{ dish_text }}</div>
+                                                                                                      {% if small_text != "" %}
+                                                                                                      <div class="description" style="text-align: center; font-size: 15px; line-height: 18px;">{{ small_text }}</div>
+                                                                                                      {% endif %}
                                                                                                     </td>
 
                                                                                                     {% if today.dagens_kock %}
