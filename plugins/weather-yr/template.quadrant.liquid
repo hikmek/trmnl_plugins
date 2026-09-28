@@ -13,8 +13,11 @@
        00-06 below). Each block = random Banksy icon + weather icon + time
        label over temperature. From day_parts in data.json (see
        buildDayParts() / banksyIconUrls() in fetch.mjs).
-    3. Rain forecast text.
-  (No condition description and no H/L line - both removed on request.)
+    3. Rain forecast as icons, no text: the witch (always) + a rain cloud
+       (raining now / rain within 60 min) or a crossed-out raindrop (no
+       rain within 60 min). current.witch_icon_url /
+       current.rain_status_icon_url, drawn by generate-rain-icons.mjs.
+  (No condition description, H/L line or rain text - removed on request.)
 
   Banksy icons come from generate-banksy-icons.mjs. Until that has been
   run, their URLs are null and those cells are simply left out.
@@ -76,7 +79,12 @@
     {% endfor %}
   </table>
 
-  <div class="description">{{ current.rain_forecast_text }}</div>
+  <table class="table" style="border: none; width: auto; margin: 0 auto;">
+    <tr>
+      <td style="border: none; padding: 0 4px; vertical-align: middle;"><img class="image image--contain image-dither" src="{{ current.witch_icon_url }}" width="40" height="40" style="width: 40px; height: 40px;"></td>
+      <td style="border: none; padding: 0 4px; vertical-align: middle;"><img class="image image--contain image-dither" src="{{ current.rain_status_icon_url }}" width="40" height="40" style="width: 40px; height: 40px;"></td>
+    </tr>
+  </table>
 </div>
 
 <div class="title_bar" style="font-family: 'Inter', sans-serif;">

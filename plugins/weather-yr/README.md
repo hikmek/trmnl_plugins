@@ -399,25 +399,56 @@ node plugins/weather-yr/generate-clothing-icons.mjs
 
 The Quadrant view shows a random pixelated Banksy icon at the start of the
 top row and one before each of the four day-part blocks (five different
-ones per run). They're made by `generate-banksy-icons.mjs` from the same
-CC-licensed Wikimedia Commons photos as `plugins/banksy` (it reads
-`../banksy/sources.json`), but finer than the banksy gallery: square
-center crop, 32x32 grid (vs 24 across), 128px, saved as 8-bit RGB PNGs
-(see the 1-bit PNG bug above). Output: `icons/banksy-<id>.png`.
+ones per run). There are 33 of them, each a single **figure or animal**
+(people, children, rats, monkeys, a dog) cut out of a CC-licensed or CC0
+photo on Wikimedia Commons, rather than a whole wall or street scene.
+
+- `banksy_figures.json` - the 33 sources: photo URL, license, author,
+  and a hand-tuned `crop` box (`[x0, y0, x1, y1]` as fractions of the
+  photo) that isolates one figure. Some photos (e.g. an exhibition wall of
+  prints) supply several icons. Optional per-entry tweaks: `invert` (light
+  figure on dark wall), `clean_edges` (drop frame/wall bits touching those
+  edges), `threshold_offset`.
+- `generate-banksy-icons.mjs` - crops each figure, fits it into a 32x32
+  grid, thresholds it with Otsu's method (automatic per crop - a fixed
+  threshold failed on unevenly lit walls), removes stray pixels, and saves
+  a 128px 8-bit RGB PNG (see the 1-bit PNG bug above) as
+  `icons/banksy-<id>.png`. It deletes any other `icons/banksy-*.png`, so
+  only this set is used. The crops were tuned against an in-browser
+  preview using the same steps.
 
 `fetch.mjs`'s `banksyIconUrls()` picks from whichever `banksy-*.png` files
 exist and writes `current.banksy_icon_url` and `day_parts[].banksy_icon_url`.
-With no files yet those are `null` and the template leaves the cells out.
+With no files those are `null` and the template leaves the cells out.
 
-Run it once (and again after adding artwork to `banksy/sources.json`; existing
-files are skipped, so delete one to regenerate it), then commit the PNGs:
+Run it (existing files are skipped; `--force` regenerates all), then commit
+the PNGs:
 
 ```powershell
 node plugins/weather-yr/generate-banksy-icons.mjs
 ```
 
-Attribution for each photo (CC BY-SA etc.) is in `banksy/sources.json`; the
-Quadrant pane has no room to show it.
+To change the set, edit `banksy_figures.json` (add an entry or adjust a
+crop) and re-run with `--force`. Attribution for each photo is in that file;
+the Quadrant pane has no room to show it.
+
+## Rain icons (Quadrant view)
+
+The Quadrant view's bottom row shows icons instead of `rain_forecast_text`:
+a pixel-art witch (pointy hat, long nose with a wart), always shown, next to
+either a rain cloud (raining now, or rain starting within 60 minutes) or a
+crossed-out raindrop (no rain expected within 60 minutes). `fetch.mjs` sets
+`current.witch_icon_url` and `current.rain_status_icon_url` from the same
+rain checks that build `rain_forecast_text` (which the Full view still uses).
+
+The icons (`icons/witch.png`, `icons/rain.png`, `icons/no-rain.png`) are
+original 32x32 pixel art stored as editable text grids in
+`generate-rain-icons.mjs`, which writes 128px 8-bit RGB PNGs with a small
+built-in PNG encoder (no `sharp` needed):
+
+```powershell
+node plugins/weather-yr/generate-rain-icons.mjs
+```
 
 ## Language: Swedish only
 

@@ -508,6 +508,12 @@ async function main() {
     rain_period_started_at: rainPeriodStartedAt,
     rain_period_ends_at: rainPeriodEndsAt,
     rain_forecast_text: rainForecastText,
+    // Quadrant view's bottom row (icons instead of rain_forecast_text; see
+    // generate-rain-icons.mjs): the witch is always shown, next to either
+    // the rain icon (raining now, or rain starting within 60 min) or the
+    // crossed-out raindrop (no rain expected within 60 min).
+    witch_icon_url: `${ICON_BASE_URL}/witch.png?v=${ICON_VERSION}`,
+    rain_status_icon_url: `${ICON_BASE_URL}/${needsRainGear || rainStartsAt ? "rain" : "no-rain"}.png?v=${ICON_VERSION}`,
   };
 
   // --- group entries by local calendar day ---
