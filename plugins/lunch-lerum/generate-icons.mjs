@@ -1,3 +1,11 @@
+// NOTE: the 15 bowl-style icons this script draws (casserole, chicken,
+// fish, generic, meatballs, meatloaf, pancake, pasta, pie, pot, rice,
+// salmon, sausage, soup, taco) have been REPLACED by bowl-free versions from
+// generate-word-icons.mjs. Running this script would overwrite them with the
+// old bowl versions again - if you do, re-run generate-word-icons.mjs
+// afterwards. This script is still the source for chef, cheese, macintosh
+// and people.
+//
 // Generator for lunch-lerum's pixel-art food icons.
 //
 // Drawn procedurally (bowl shapes + simple geometric toppings) on a boolean

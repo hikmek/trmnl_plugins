@@ -45,7 +45,8 @@ just one dish per day as `dish`:
 - `dish` = the Dagens Gröna text, `dish_is_vegetarian: true` - normal case.
 - Only if a day has NO Dagens Gröna, `dish` = the Dagens Lunch text,
   `dish_is_vegetarian: false`, and its icon row starts with `no-veg` (a
-  crossed-out carrot). Both templates also add a short "Ingen grön" note.
+  crossed-out carrot). The templates then show "Ingen vegetarisk lunch på
+  schemat" as the big text, with the meat dish underneath in small text.
 
 The meat dish is never written to `data.json` on days that have a vegetarian
 dish, so no template can show it by mistake. (The old `lunch`,
@@ -81,6 +82,14 @@ pixel art stored as text grids in `generate-word-icons.mjs`, written as
 ```powershell
 node plugins/lunch-lerum/generate-word-icons.mjs
 ```
+
+**No bowls:** all food icons are standalone objects now - the 15 that used
+to sit on a bowl (chicken, fish, salmon, meatballs, meatloaf, sausage,
+pancake, pasta, pie, pot, rice, soup, taco, casserole, generic) were redrawn
+in `generate-word-icons.mjs` (e.g. chicken is a drumstick with its bone,
+pasta is spaghetti twirled on a fork, generic is a plate with fork and
+knife). Don't re-run `generate-icons.mjs` for those - it would bring the
+bowls back.
 
 Icon sizes shrink with the count so the row always fits: Quadrant 44px
 (1-4 icons), 40px (5), 34px (6); Full view today 64/56/46/38px; the
