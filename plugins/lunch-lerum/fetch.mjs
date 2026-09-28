@@ -134,68 +134,99 @@ async function pickDagensKock() {
   }
 }
 
-// Extensible keyword -> icon mapping. First match wins, so more specific /
-// more visually distinctive categories are listed first (e.g. "köttbullar"
-// before "pasta", so "Kycklingköttbullar serveras med pasta" shows
-// meatballs rather than pasta). A dish can now match SEVERAL keywords at
-// once (e.g. "Fiskgryta med lax och sej" contains "gryta", "fisk" - inside
-// the compound word "Fiskgryta" - and "lax", and "sej" - see
-// iconsForDish() below, which returns every match, not just the first),
-// so it can show several icons together: one per distinct food/component
-// mentioned. Any dish that matches nothing falls back to "generic" (a
-// plain bowl), so every dish that exists always gets *some* icon.
-const FOOD_ICON_KEYWORDS = [
-  { pattern: /köttbullar|kottbullar/i, icon: "meatballs" },
-  { pattern: /spaghetti|pasta|lasagn|nudlar|nudel|penne/i, icon: "pasta" },
-  { pattern: /korv/i, icon: "sausage" },
-  // "Mac n cheese" gets a wordplay pair instead of the generic pasta icon:
-  // both patterns match the same phrase, so iconsForDish() (which collects
-  // every match, not just the first) adds both the "Mac" (a generic old
-  // computer/monitor silhouette) and the "cheese" (a wedge with holes)
-  // icon together - see generate-icons.mjs's macintoshIcon()/cheeseIcon().
-  { pattern: /mac\s*n\s*cheese|mac\s*(?:and|&)\s*cheese/i, icon: "macintosh" },
-  { pattern: /mac\s*n\s*cheese|mac\s*(?:and|&)\s*cheese/i, icon: "cheese" },
-  // Salmon gets its own icon distinct from the generic "fish" one -
-  // checked before the generic fish pattern below so "lax" always adds
-  // the salmon icon even inside a word that also matches "fisk" (e.g.
-  // "Fiskgryta" contains "fisk", "lax och sej" separately mentions lax).
-  { pattern: /lax/i, icon: "salmon" },
-  { pattern: /fisk|sej|torsk/i, icon: "fish" },
-  { pattern: /kyckling/i, icon: "chicken" },
-  { pattern: /ris/i, icon: "rice" },
-  { pattern: /taco/i, icon: "taco" },
-  { pattern: /soppa|buffe|buffé|julbord/i, icon: "soup" },
-  { pattern: /paj/i, icon: "pie" },
-  { pattern: /pannkaka/i, icon: "pancake" },
-  // "gryta" (stew/pot) - renamed from the old "stew" icon to "pot" (an
-  // actual cooking-pot shape, not a bowl+swirl) per explicit request.
-  { pattern: /gryta|curry|gulasch|chili/i, icon: "pot" },
-  { pattern: /gratäng|moussaka/i, icon: "casserole" },
-  { pattern: /färs/i, icon: "meatloaf" },
-  // These two are checked last (after specific food types), so e.g.
-  // "Kockens val av pastarätt" shows BOTH the pasta icon and the chef-hat
-  // icon (it's still useful to flag "chef's choice" even once the actual
-  // dish is known), and a truly generic "Kockens val" (no food mentioned)
-  // shows only the chef-hat icon; same idea for "Gästens val" -> people.
-  { pattern: /kockens/i, icon: "chef" },
-  { pattern: /gästens/i, icon: "people" },
+// --- Word-by-word dish icons ------------------------------------------------
+// Every word of the dish is checked on its own, and every food word found in
+// it becomes an icon, in the order the words appear - so the icon row reads
+// like the dish: "Pesto på soltorkad tomat serveras med pasta" -> leaf (pesto),
+// sun (SOLtorkad), tomato, pasta. Swedish compounds are searched inside too,
+// which is where the wordplay comes from: "potatisbullar" -> potato + bun,
+// "havreris" -> grain + rice, "blomkålsgratäng" -> flower (BLOMkål) +
+// casserole, "husmanskost" / "hemgjort" -> house, "Medelhavsgratäng" -> sea
+// waves + casserole, "rotfruktsmedaljonger" -> carrot + medal, "julbord" ->
+// Christmas tree. Filler words (med, och, serveras, ...) simply match nothing.
+//
+// Each rule: `re` is tested against ONE lower-cased word; where it matches
+// inside that word decides the order within a compound. Several rules may
+// give the same icon (e.g. "fisk", "sej"); each icon is shown once per dish.
+// Icons: the original bowl-style set from generate-icons.mjs plus the
+// standalone word icons from generate-word-icons.mjs.
+const WORD_ICON_RULES = [
+  { re: /kockens|^kock/, icon: "chef" },
+  { re: /gästens|^gäst/, icon: "people" },
+  { re: /grön|^veg/, icon: "leaf" },
+  { re: /spenat|koriander|pesto|basilika|örter/, icon: "leaf" },
+  { re: /potatis/, icon: "potato" },
+  { re: /havre|bulgur|couscous|quinoa|matvete/, icon: "grain" },
+  { re: /ris$|^ris/, icon: "rice" },
+  { re: /medelhav|^hav$/, icon: "wave" },
+  { re: /köttbull/, icon: "meatballs" },
+  { re: /(?<!kött)bull/, icon: "bun" },
+  { re: /sallad/, icon: "salad" },
+  { re: /soja|baljväxt|bön|linser|kikärt|edamame/, icon: "bean" },
+  { re: /^hem|^hus/, icon: "house" },
+  { re: /italien|pizza/, icon: "pizza" },
+  { re: /lingon|bär/, icon: "berries" },
+  { re: /broccoli/, icon: "broccoli" },
+  { re: /blom/, icon: "flower" },
+  { re: /^sol/, icon: "sun" },
+  { re: /solros/, icon: "flower" },
+  { re: /sås|dressing|dipp/, icon: "gravy" },
+  { re: /lime|citron/, icon: "lemon" },
+  { re: /tomat/, icon: "tomato" },
+  { re: /gurka/, icon: "cucumber" },
+  { re: /pannkak/, icon: "pancake" },
+  { re: /(?<!pann)kaka|tårta|muffin/, icon: "cake" },
+  { re: /^jul/, icon: "tree" },
+  { re: /morot|morötter|rotfrukt|rotsak/, icon: "carrot" },
+  { re: /medalj/, icon: "medal" },
+  { re: /lök/, icon: "garlic" },
+  { re: /pasta|nudl|nudel|spaghetti|lasagn|penne|makaron/, icon: "pasta" },
+  { re: /korv/, icon: "sausage" },
+  { re: /^ost|keso|cheese|halloumi|feta|mozzarella|parmesan/, icon: "cheese" },
+  { re: /lax/, icon: "salmon" },
+  { re: /fisk|^sej|torsk/, icon: "fish" },
+  { re: /kyckling/, icon: "chicken" },
+  { re: /taco/, icon: "taco" },
+  { re: /sopp|buff[eé]/, icon: "soup" },
+  { re: /paj/, icon: "pie" },
+  { re: /gryta|gulasch|stroganoff|bolognese|chili|curry/, icon: "pot" },
+  { re: /gratäng|moussaka/, icon: "casserole" },
+  { re: /färs(?!k)|limpa|biff/, icon: "meatloaf" }, // not "färsk" (fresh)
 ];
 
-const MAX_ICONS_PER_DISH = 4; // safety cap - no real dish should ever hit this
+// "Mac n cheese" spans words, so it's matched on the whole dish first: the
+// "Mac" (old computer) + "cheese" pair from generate-icons.mjs.
+const PHRASE_ICON_RULES = [{ re: /mac\s*(?:n|and|&)\s*cheese/i, icons: ["macintosh", "cheese"] }];
 
-// Returns every distinct icon whose keyword pattern matches the dish text,
-// in FOOD_ICON_KEYWORDS order (deduplicated - "sej" and "fisk" both map to
-// "fish", so that icon is only added once even if both appear). Falls back
-// to a single "generic" icon if the dish text exists but matches nothing,
-// so every real dish always gets at least one icon.
+const MAX_ICONS_PER_DISH = 6; // a long dish can name many foods; the templates size icons to fit
+
+// Returns the icon names for a dish, word by word, in reading order,
+// each icon at most once. A dish that exists but has no known food word
+// gets the plain bowl ("generic"), so every dish always shows something.
 function iconsForDish(text) {
   if (!text) return [];
-  const matches = [];
-  for (const k of FOOD_ICON_KEYWORDS) {
-    if (k.pattern.test(text) && !matches.includes(k.icon)) matches.push(k.icon);
-    if (matches.length >= MAX_ICONS_PER_DISH) break;
+  const icons = [];
+  const add = (icon) => {
+    if (!icons.includes(icon) && icons.length < MAX_ICONS_PER_DISH) icons.push(icon);
+  };
+  let rest = text;
+  for (const p of PHRASE_ICON_RULES) {
+    if (p.re.test(rest)) {
+      p.icons.forEach(add);
+      rest = rest.replace(p.re, " ");
+    }
   }
-  return matches.length ? matches : ["generic"];
+  const words = rest.toLowerCase().split(/[^a-zåäöéü]+/).filter(Boolean);
+  for (const word of words) {
+    const hits = [];
+    WORD_ICON_RULES.forEach((rule, order) => {
+      const m = rule.re.exec(word);
+      if (m) hits.push({ at: m.index, order, icon: rule.icon });
+    });
+    hits.sort((a, b) => a.at - b.at || a.order - b.order);
+    hits.forEach((h) => add(h.icon));
+  }
+  return icons.length ? icons : ["generic"];
 }
 
 function iconUrls(icons) {
@@ -392,21 +423,29 @@ function parseDays(html) {
       }
     }
 
+    // VEGETARIAN FIRST: "Dagens Gröna" is the dish shown. "Dagens Lunch"
+    // (usually meat or fish) is only published when there is NO vegetarian
+    // dish that day - and then its icon row starts with a crossed-out carrot
+    // ("no-veg") so it's obvious at a glance that this is not vegetarian.
+    // Templates only use `dish` / `dish_icon_urls` / `dish_is_vegetarian`.
+    const useVeg = Boolean(vegetarian);
+    const dish = useVeg ? vegetarian : lunch;
+    const dishIcons = !dish ? [] : useVeg ? iconsForDish(vegetarian) : ["no-veg", ...iconsForDish(lunch)].slice(0, MAX_ICONS_PER_DISH);
     days.push({
       date,
       weekday,
       note: note ? note.trim() : null,
-      lunch,
-      lunch_icon_urls: iconUrls(iconsForDish(lunch)),
       vegetarian,
-      vegetarian_icon_urls: iconUrls(iconsForDish(vegetarian)),
+      dish,
+      dish_is_vegetarian: useVeg,
+      dish_icon_urls: iconUrls(dishIcons),
     });
   }
 
   return days;
 }
 
-export { parseDays, fetchHtml };
+export { parseDays, fetchHtml, iconsForDish };
 
 const LIVE_DATA_URL = "https://hikmek.github.io/trmnl_plugins/lunch-lerum/data.json";
 
@@ -429,7 +468,10 @@ async function main() {
   // guarantees a fresh fetch happens promptly once the Europe/Stockholm
   // date actually changes, so "today's lunch" never keeps showing
   // yesterday's dish for a stretch after midnight.
-  if (await shouldSkipDailyFetch(LIVE_DATA_URL, (json) => json.today?.date, TIMEZONE)) {
+  // Also refetches when the published data is still in the old format (no
+  // `dish` field) - so a format change shows up right away instead of the
+  // next day.
+  if (await shouldSkipDailyFetch(LIVE_DATA_URL, (json) => (json.today && "dish" in json.today ? json.today.date : null), TIMEZONE)) {
     console.log("Skipping lunch-lerum fetch - already have today's menu published");
     return;
   }
@@ -471,10 +513,10 @@ async function main() {
           // for real gaps: a weekday that's out of term range, or a date
           // the page just doesn't have yet).
           note: isWeekend ? "HELGn = Ingen skolmatn" : "No menu published for this date",
-          lunch: null,
-          lunch_icon_urls: [],
           vegetarian: null,
-          vegetarian_icon_urls: [],
+          dish: null,
+          dish_is_vegetarian: false,
+          dish_icon_urls: [],
           hemmamat,
           dagens_kock: dagensKock,
         };

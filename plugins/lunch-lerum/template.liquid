@@ -7,8 +7,9 @@
   TRMNL's platform supplies those for private plugins.
 
   Three-column layout, left to right:
-  1. Skolmatn - the school's VEGETARIAN option only (today.vegetarian) on
-     weekdays; on Lördag/Söndag (today.is_weekend) there's never a school
+  1. Skolmatn - the school's VEGETARIAN option (today.dish; only when a day
+     has no vegetarian dish does it fall back to the regular lunch, flagged
+     with a note + a crossed-out carrot icon - see fetch.mjs) on weekdays; on Lördag/Söndag (today.is_weekend) there's never a school
      menu at all, so this column shows "HELGn = Ingen skolmatn" instead.
   2. Hemmamatn - the family's home-cooked weekend menu (from the shared
      Google Sheet), showing BOTH Lördag and Söndag (Lunch + Middag each)
@@ -26,8 +27,8 @@
   iconsForDish() returns every matching keyword, not just the first - e.g.
   "Fiskgryta med lax och sej" shows a pot + fish + salmon icon), so
   `*_icon_url` (singular) became `*_icon_urls` (a plural array) everywhere
-  in the data - `today.vegetarian_icon_urls`, `day.lunch_icon_urls`,
-  `day.vegetarian_icon_urls`. Every icon `<img>` sits in its own plain
+  in the data - `today.dish_icon_urls` / `day.dish_icon_urls` (word-by-word, up to 6 -
+  see fetch.mjs WORD_ICON_RULES). Every icon `<img>` sits in its own plain
   `<table>`/`<td>` cell (not TRMNL's styled table component) rather than
   as a flex sibling of another `<img>` - a bare row of `<img>` tags gets
   squashed into a narrow sliver on a real device (see bus-grabo's/
@@ -45,13 +46,16 @@
       <div class="label">Skolmatn</div>
       {% if today.is_weekend %}
       <div class="value" style="text-align: center;">{{ today.note }}</div>
-      {% elsif today.vegetarian %}
-      <div class="value value--large" style="text-align: center;">{{ today.vegetarian }}</div>
-      {% if today.vegetarian_icon_urls.size > 0 %}
+      {% elsif today.dish %}
+      {% unless today.dish_is_vegetarian %}<div class="description" style="text-align: center;">Ingen grön rätt idag - dagens lunch:</div>{% endunless %}
+      <div class="value value--large" style="text-align: center;">{{ today.dish }}</div>
+      {% if today.dish_icon_urls.size > 0 %}
+      {% assign icon_px = 64 %}
+      {% if today.dish_icon_urls.size >= 6 %}{% assign icon_px = 38 %}{% elsif today.dish_icon_urls.size == 5 %}{% assign icon_px = 46 %}{% elsif today.dish_icon_urls.size == 4 %}{% assign icon_px = 56 %}{% endif %}
       <table style="border-collapse: collapse; margin: 0 auto;">
         <tr>
-          {% for icon_url in today.vegetarian_icon_urls %}
-          <td style="border: none; padding: 0 3px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="64" height="64" style="width: 64px; height: 64px;"></td>
+          {% for icon_url in today.dish_icon_urls %}
+          <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="{{ icon_px }}" height="{{ icon_px }}" style="width: {{ icon_px }}px; height: {{ icon_px }}px;"></td>
           {% endfor %}
         </tr>
       </table>
@@ -95,9 +99,8 @@
   <table class="table">
     <thead>
       <tr>
-        <th>Day</th>
-        <th>Lunch</th>
-        <th>Vegetarian</th>
+        <th>Dag</th>
+        <th>Grön rätt</th>
       </tr>
     </thead>
     <tbody>
@@ -105,31 +108,13 @@
       <tr>
         <td>{{ day.weekday }}{% if day.note %} ({{ day.note }}){% endif %}</td>
         <td>
-          {% if day.lunch %}
+          {% if day.dish %}
           <div class="layout layout--col layout--center gap--xsmall">
-            <span style="text-align: center;">{{ day.lunch }}</span>
-            {% if day.lunch_icon_urls.size > 0 %}
+            <span style="text-align: center;">{% unless day.dish_is_vegetarian %}(Ingen grön) {% endunless %}{{ day.dish }}</span>
+            {% if day.dish_icon_urls.size > 0 %}
             <table style="border-collapse: collapse; margin: 0 auto;">
               <tr>
-                {% for icon_url in day.lunch_icon_urls %}
-                <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="26" height="26" style="width: 26px; height: 26px;"></td>
-                {% endfor %}
-              </tr>
-            </table>
-            {% endif %}
-          </div>
-          {% else %}
-          <span>-</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if day.vegetarian %}
-          <div class="layout layout--col layout--center gap--xsmall">
-            <span style="text-align: center;">{{ day.vegetarian }}</span>
-            {% if day.vegetarian_icon_urls.size > 0 %}
-            <table style="border-collapse: collapse; margin: 0 auto;">
-              <tr>
-                {% for icon_url in day.vegetarian_icon_urls %}
+                {% for icon_url in day.dish_icon_urls %}
                 <td style="border: none; padding: 0 2px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="26" height="26" style="width: 26px; height: 26px;"></td>
                 {% endfor %}
               </tr>

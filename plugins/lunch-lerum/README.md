@@ -36,6 +36,56 @@ view (Quadrant only has room for skolmatn + dagens kock - see below):
   a `DAGENS_KOCK_DESCRIPTIONS_SV` lookup keyed by slug, kept in
   lunch-lerum's own `fetch.mjs` so broforce's own display is untouched.
 
+## Vegetarian first + word-by-word icons
+
+**Only the vegetarian dish is shown.** Each school day has a "Dagens Lunch"
+(usually meat/fish) and a "Dagens Gröna" (vegetarian). `fetch.mjs` publishes
+just one dish per day as `dish`:
+
+- `dish` = the Dagens Gröna text, `dish_is_vegetarian: true` - normal case.
+- Only if a day has NO Dagens Gröna, `dish` = the Dagens Lunch text,
+  `dish_is_vegetarian: false`, and its icon row starts with `no-veg` (a
+  crossed-out carrot). Both templates also add a short "Ingen grön" note.
+
+The meat dish is never written to `data.json` on days that have a vegetarian
+dish, so no template can show it by mistake. (The old `lunch`,
+`lunch_icon_urls` and `vegetarian_icon_urls` fields are gone; use `dish`,
+`dish_icon_urls`, `dish_is_vegetarian`. `vegetarian` is still there as the
+raw Dagens Gröna text or null.)
+
+**Icons are picked word by word** (`iconsForDish()` / `WORD_ICON_RULES` in
+`fetch.mjs`): every word of the dish is checked, including inside Swedish
+compounds, and each food word becomes an icon in reading order (each icon
+once, max 6). That is where the wordplay comes from:
+
+| Dish | Icons |
+| --- | --- |
+| Pesto på soltorkad tomat serveras med pasta och rostade solrosfrön | leaf, sun (SOLtorkad), tomato, pasta, flower (SOLROSfrön) |
+| Korv med potatisbullar, cottage cheese och lingon | sausage, potato, bun (potatisBULLAR), cheese, berries |
+| Rotfruktsmedaljonger serveras med bulgur och vitlökssås | carrot, medal (MEDALJonger), grain, garlic, gravy |
+| Broccoli- och blomkålsgratäng | broccoli, flower (BLOMkål), casserole |
+| Sojakorv med hemgjort potatismos | bean, sausage, house (HEMgjort), potato |
+| Medelhavsgratäng | wave (MEDELHAV), casserole |
+| Julbord vegetariskt | tree (JULbord), leaf |
+
+Filler words (med, och, serveras, ...) match nothing. A dish with no known
+word gets the plain bowl (`generic`). To add a word, add a rule to
+`WORD_ICON_RULES` (regex tested against one lower-cased word).
+
+The new standalone icons (leaf, grain, wave, bun, salad, bean, potato,
+house, pizza, berries, broccoli, flower, gravy, sun, lemon, tomato,
+cucumber, cake, tree, carrot, medal, garlic, no-veg) are original 32x32
+pixel art stored as text grids in `generate-word-icons.mjs`, written as
+128px 8-bit RGB PNGs by a built-in encoder (no `sharp` needed):
+
+```powershell
+node plugins/lunch-lerum/generate-word-icons.mjs
+```
+
+Icon sizes shrink with the count so the row always fits: Quadrant 44px
+(1-4 icons), 40px (5), 34px (6); Full view today 64/56/46/38px; the
+upcoming-days table stays 26px.
+
 ## How it works
 
 1. `.github/workflows/build-pages.yml` runs `fetch.mjs` on every workflow

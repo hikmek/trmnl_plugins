@@ -283,25 +283,33 @@
 
 {% assign pane_h = 170 %}
 
+{%- comment -%}
+  VEGETARIAN FIRST (fetch.mjs): `today.dish` is the vegetarian dish
+  ("Dagens Gröna"); only when a day has none is it the regular lunch, and
+  then `today.dish_is_vegetarian` is false and the first icon is a
+  crossed-out carrot. Icons are word-by-word (up to 6), so the icon size
+  shrinks with the count to keep the row inside the ~210px left cell:
+  1-4 icons 44px, 5 icons 40px, 6 icons 34px.
+{%- endcomment -%}
 {% assign show_icon_row = false %}
+{% assign icon_px = 44 %}
 {% assign icon_row_width = 0 %}
-{% if today.lunch and today.lunch_icon_urls.size > 0 %}
+{% if today.dish and today.dish_icon_urls.size > 0 %}
   {% assign show_icon_row = true %}
-  {% assign icon_row_width = today.lunch_icon_urls.size | times: 44 %}
-{% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
-  {% assign show_icon_row = true %}
-  {% assign icon_row_width = today.vegetarian_icon_urls.size | times: 44 %}
+  {% if today.dish_icon_urls.size >= 6 %}{% assign icon_px = 34 %}{% elsif today.dish_icon_urls.size == 5 %}{% assign icon_px = 40 %}{% endif %}
+  {% assign icon_row_width = today.dish_icon_urls.size | times: icon_px %}
 {% endif %}
 
 {%- comment -%} ===== What the left column says ===== {%- endcomment -%}
 {% assign dish_label = "" %}
 {% assign dish_text = "" %}
-{% if today.lunch %}
-  {% assign dish_label = "Dagens Lunch" %}
-  {% assign dish_text = today.lunch | truncate: 64 %}
-{% elsif today.vegetarian %}
-  {% assign dish_label = "Dagens Gröna" %}
-  {% assign dish_text = today.vegetarian | truncate: 64 %}
+{% if today.dish %}
+  {% if today.dish_is_vegetarian %}
+    {% assign dish_label = "Dagens Gröna" %}
+  {% else %}
+    {% assign dish_label = "Ingen grön idag" %}
+  {% endif %}
+  {% assign dish_text = today.dish | truncate: 64 %}
 {% elsif today.is_weekend %}
   {% assign dish_label = "Hemmamat " | append: today.weekday %}
   {% if today.hemmamat and today.weekday == "Lördag" %}
@@ -325,7 +333,8 @@
 {%- comment -%} ===== Biggest dish font that still fits (see SIZING note above) ===== {%- endcomment -%}
 {% assign text_room = pane_h | minus: 20 %}
 {% if show_icon_row %}
-  {% assign text_room = text_room | minus: 48 %}
+  {% assign icon_row_h = icon_px | plus: 4 %}
+  {% assign text_room = text_room | minus: icon_row_h %}
 {% endif %}
 {% assign dish_words = dish_text | replace: "-", "- " | split: " " %}
 {% assign longest_word = 0 %}
@@ -434,15 +443,9 @@
         {% if show_icon_row %}
         <table style="width: {{ icon_row_width }}px; margin: 0 auto 4px; border-collapse: collapse; table-layout: fixed;">
           <tr>
-            {% if today.lunch and today.lunch_icon_urls.size > 0 %}
-            {% for icon_url in today.lunch_icon_urls %}
-            <td style="border: none; padding: 0; width: 44px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
+            {% for icon_url in today.dish_icon_urls %}
+            <td style="border: none; padding: 0; width: {{ icon_px }}px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="{{ icon_px }}" height="{{ icon_px }}" style="width: {{ icon_px }}px; height: {{ icon_px }}px;"></td>
             {% endfor %}
-            {% elsif today.vegetarian and today.vegetarian_icon_urls.size > 0 %}
-            {% for icon_url in today.vegetarian_icon_urls %}
-            <td style="border: none; padding: 0; width: 44px;"><img class="image image--contain image-dither" src="{{ icon_url }}" width="44" height="44" style="width: 44px; height: 44px;"></td>
-            {% endfor %}
-            {% endif %}
           </tr>
         </table>
         {% endif %}
