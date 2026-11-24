@@ -3,14 +3,36 @@
   the pictures plugin (Polling strategy). Field names match the JSON
   produced by fetch.mjs.
 
-  The pictures are already 4-tone pixel art, so there is NO "image-dither"
-  (it would soften the blocks), and image-rendering: pixelated keeps the
-  pixels crisp when the browser scales them to fit 800x480. For ordinary
-  photos, add "image-dither" to the img class and drop the pixelated style.
+  Top: the Game Boy bird, shown at exactly 2/3 size so every Game Boy
+  pixel is a clean 2x2 block. Under it, centred: a clock drawn with your
+  own handwritten digits (digits/0.png-9.png, made by generate-digits.mjs,
+  shown at full size = 3x3 blocks so it's easy to read), and under that
+  when the data was last updated.
+
+  The clock shows the time when TRMNL renders the screen (TRMNL's "now"
+  is UTC, so we add your TRMNL account's time zone offset). E-ink doesn't
+  tick, so it's the time of the latest refresh - it's at most one refresh
+  interval behind.
+
+  No "image-dither" anywhere (it would soften the pixel blocks), and
+  image-rendering: pixelated keeps the blocks crisp if anything is scaled.
 {%- endcomment -%}
 
-<div class="layout layout--col layout--center">
-  <img class="image image--contain" src="{{ image_url }}" style="max-height: 100%; image-rendering: pixelated;">
+{%- assign utc_offset = trmnl.user.utc_offset | default: 3600 -%}
+{%- assign hhmm = "now" | date: "%s" | plus: utc_offset | date: "%H%M" -%}
+
+<div class="layout layout--col layout--center" style="gap: 10px;">
+  {%- comment -%} zoom 2/3: each 3x3 Game Boy block -> exactly 2x2 px {%- endcomment -%}
+  <img src="{{ image_url }}" style="zoom: 0.6667; image-rendering: pixelated;">
+
+  <div style="display: flex; align-items: flex-end; justify-content: center;">
+    <img src="{{ digits_url }}/{{ hhmm | slice: 0 }}.png" style="image-rendering: pixelated;">
+    <img src="{{ digits_url }}/{{ hhmm | slice: 1 }}.png" style="image-rendering: pixelated;">
+    <img src="{{ digits_url }}/colon.png" style="image-rendering: pixelated;">
+    <img src="{{ digits_url }}/{{ hhmm | slice: 2 }}.png" style="image-rendering: pixelated;">
+    <img src="{{ digits_url }}/{{ hhmm | slice: 3 }}.png" style="image-rendering: pixelated;">
+  </div>
+  <span class="label label--small">{{ updated_display }}</span>
 </div>
 
 <div class="title_bar">

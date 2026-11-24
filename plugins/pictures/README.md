@@ -55,6 +55,29 @@ at the top of the script: `GAMMA` (lower = brighter) and `PALETTE_GREEN`
 (classic pea-green, for viewing on a computer - keep greys for the e-ink
 screen). High-contrast photos with a clear subject work best.
 
+## Clock (your handwritten digits)
+
+Under the bird there's a clock drawn with your own handwritten digits, and
+under that "Data uppdaterad kl HH:MM idag".
+
+- `digits/source.png` is the handwritten number sheet. `generate-digits.mjs`
+  cuts out 0-9 (positions in `DIGIT_BOXES`), pixelates them like the birds
+  (1-pixel strokes, Game Boy blocks) and writes `digits/0.png`-`9.png` and
+  `digits/colon.png`. Run it again only if you change the sheet or settings:
+
+  ```powershell
+  node plugins/pictures/generate-digits.mjs
+  ```
+
+- `fetch.mjs` copies the digits to GitHub Pages on every run and adds
+  `digits_url` and `updated_display` to `data.json`.
+- The template builds the time from TRMNL's `"now"` plus your TRMNL time
+  zone offset. E-ink doesn't tick, so the clock shows the time of the last
+  screen refresh (at most one refresh interval behind).
+- Sizes: the bird is shown at 2/3 size so every Game Boy pixel is an exact
+  2x2 block; the digits at full size (3x3 blocks) so they're easy to read.
+  In the quadrant layout both are at 1/3 (1 px blocks).
+
 ## How it works
 
 `fetch.mjs` (runs every 5 minutes via the shared GitHub Actions workflow):
@@ -88,7 +111,9 @@ On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
   "file": "summer-house_2024.png",
   "title": "summer house 2024",
   "index": 3,          // position in the sorted folder (1-based)
-  "gallery_size": 12
+  "gallery_size": 12,
+  "updated_display": "Data uppdaterad kl 15:55 idag",
+  "digits_url": "https://hikmek.github.io/trmnl_plugins/pictures/digits"
 }
 ```
 
