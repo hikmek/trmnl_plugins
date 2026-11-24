@@ -100,10 +100,17 @@ jobs:
         continue-on-error: true
         run: node plugins/broforce/fetch.mjs
 
+      # --- Plugin #6: pictures (runs every cycle - no external network
+      #     call apart from reading its own last data.json to avoid an
+      #     immediate repeat; picks a random PNG from plugins/pictures/images/) ---
+      - name: Fetch pictures data
+        continue-on-error: true
+        run: node plugins/pictures/fetch.mjs
+
       # Add future plugins here, e.g.:
-      # - name: Fetch plugin6 data
+      # - name: Fetch plugin7 data
       #   continue-on-error: true
-      #   run: node plugins/plugin6/fetch.mjs
+      #   run: node plugins/plugin7/fetch.mjs
 
       - name: Copy banksy static gallery images
         run: |
@@ -130,10 +137,17 @@ jobs:
           mkdir -p public/broforce/portraits
           cp plugins/broforce/portraits/*.png public/broforce/portraits/
 
+      # find instead of cp *.png so an empty images/ folder (or .PNG
+      # upper-case names) doesn't fail the whole build.
+      - name: Copy pictures static images
+        run: |
+          mkdir -p public/pictures/images
+          find plugins/pictures/images -maxdepth 1 -type f -iname '*.png' -exec cp {} public/pictures/images/ \;
+
       - name: Fall back to last published data for any plugin that failed
         run: |
           set -e
-          PLUGINS="weather-yr lunch-lerum bus-grabo banksy broforce"
+          PLUGINS="weather-yr lunch-lerum bus-grabo banksy broforce pictures"
           for p in $PLUGINS; do
             if [ ! -f "public/$p/data.json" ]; then
               echo "No fresh data.json for $p this run - trying last published version"
@@ -155,6 +169,7 @@ jobs:
             <li><a href="bus-grabo/data.json">bus-grabo/data.json</a></li>
             <li><a href="banksy/data.json">banksy/data.json</a></li>
             <li><a href="broforce/data.json">broforce/data.json</a></li>
+            <li><a href="pictures/data.json">pictures/data.json</a></li>
           </ul>
           </body></html>
           EOF

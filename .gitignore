@@ -1,2 +1,4 @@
 node_modules/
 public/
+# Full-size photos for generate-pictures.mjs - only the pixel-art output is published
+plugins/pictures/originals/

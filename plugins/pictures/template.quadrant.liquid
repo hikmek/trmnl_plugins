@@ -1,0 +1,12 @@
+{%- comment -%}
+  Paste this into the "Quadrant" tab of the pictures plugin's Edit Markup
+  screen. Compact version for small Mashup panes - just the image.
+{%- endcomment -%}
+
+<div class="layout layout--col layout--center">
+  <img class="image image--contain" src="{{ image_url }}" style="image-rendering: pixelated;">
+</div>
+
+<div class="title_bar">
+  <span class="title">{{ title | default: "Bilder" }}</span>
+</div>

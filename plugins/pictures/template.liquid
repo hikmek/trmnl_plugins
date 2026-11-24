@@ -1,0 +1,19 @@
+{%- comment -%}
+  Paste this into the TRMNL Private Plugin "Markup" editor (Full tab) for
+  the pictures plugin (Polling strategy). Field names match the JSON
+  produced by fetch.mjs.
+
+  The pictures are already 4-tone pixel art, so there is NO "image-dither"
+  (it would soften the blocks), and image-rendering: pixelated keeps the
+  pixels crisp when the browser scales them to fit 800x480. For ordinary
+  photos, add "image-dither" to the img class and drop the pixelated style.
+{%- endcomment -%}
+
+<div class="layout layout--col layout--center">
+  <img class="image image--contain" src="{{ image_url }}" style="max-height: 100%; image-rendering: pixelated;">
+</div>
+
+<div class="title_bar">
+  <span class="title">{{ title | default: "Bilder" }}</span>
+  <span class="instance">{{ index }} / {{ gallery_size }}</span>
+</div>
