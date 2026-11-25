@@ -55,6 +55,28 @@ at the top of the script: `GAMMA` (lower = brighter) and `PALETTE_GREEN`
 (classic pea-green, for viewing on a computer - keep greys for the e-ink
 screen). High-contrast photos with a clear subject work best.
 
+## Walking bird (flipbook)
+
+The plugin shows a flipbook of your bird walking across the screen, one
+frame per refresh: legs in a 4-step walk cycle, the arm swinging opposite
+to the legs, and an occasional blink. 24 frames x 15 minutes = one walk
+across every 6 hours (4 per day).
+
+- `walk/source.png` is your drawing (facing left). `generate-walk.mjs` keeps
+  the body as drawn, cuts off the legs and redraws them per frame, swings
+  the arm and closes the eye on a few frames, then pixelates each frame
+  Game Boy style into `walk/frame-00.png` ... `frame-23.png`:
+
+  ```powershell
+  node plugins/pictures/generate-walk.mjs
+  ```
+
+  Settings at the top of the script: `FRAMES`, `ARM_SWING`, `BLINK_FRAMES`,
+  `LIFT`. The measurements (`HIP_Y`, `HIPS`, `ARM_BOX`, `EYE`, ...) are for this
+  particular drawing - a new drawing needs new measurements.
+- To go back to random pictures from `images/`, set `MODE = "random"` at the
+  top of `fetch.mjs`.
+
 ## Clock (your handwritten digits)
 
 Under the bird there's a clock drawn with your own handwritten digits.
