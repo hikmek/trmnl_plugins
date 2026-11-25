@@ -78,6 +78,27 @@ Under the bird there's a clock drawn with your own handwritten digits.
   2x2 block; the digits at full size (3x3 blocks) so they're easy to read.
   In the quadrant layout both are at 1/3 (1 px blocks).
 
+## Why the polling URL has the time in it
+
+TRMNL only renders a new screen when the polled data has **changed**. The
+GitHub workflow is scheduled every 5 minutes, but GitHub delays and drops
+scheduled runs (sometimes for hours) - and with no new data, TRMNL keeps
+the old screen and the clock freezes.
+
+So `fetch.mjs` publishes one small file per minute of the day,
+`slots/0000.json` ... `slots/2359.json`, and the polling URL picks the file
+for the current minute. Every poll gets different data -> TRMNL redraws on
+every refresh, whether or not GitHub has run lately. The picture rotation is
+baked into the files (a random picture per 15-minute block, never the same
+twice in a row), and is re-shuffled each time the workflow runs.
+
+"Data uppdaterad kl ..." (bottom right) shows when GitHub last rebuilt the
+files - if it's hours old, GitHub's schedule is lagging, but the clock and
+pictures keep working.
+
+`data.json` is still published (the older single-file feed), but it only
+changes when the workflow runs.
+
 ## How it works
 
 `fetch.mjs` (runs every 5 minutes via the shared GitHub Actions workflow):
@@ -94,7 +115,8 @@ The workflow copies `images/*.png` to GitHub Pages as static files.
 On [usetrmnl.com](https://usetrmnl.com), create another **Private Plugin**:
 
 - Strategy: **Polling**
-- Polling URL: `https://hikmek.github.io/trmnl_plugins/pictures/data.json`
+- Polling URL (exactly like this, Liquid included):
+  `https://hikmek.github.io/trmnl_plugins/pictures/slots/{{ "now" | date: "%H%M" }}.json`
 - Polling Verb: `GET`
 - Refresh rate: **5 minutes** (or slower - each poll gets whatever picture
   was picked most recently)

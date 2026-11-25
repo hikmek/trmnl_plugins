@@ -1,11 +1,25 @@
-// TRMNL Plugin #6: Pictures rotator
+// TRMNL Plugin #6: Pictures rotator (+ handwritten Game Boy clock)
 //
-// Picks a random PNG from plugins/pictures/images/ (your own files - just
-// drop them in and commit) and writes a tiny JSON pointing TRMNL at the
-// chosen image's public URL. No manifest to maintain: the folder IS the
-// list. No external network calls apart from one cheap read of our own
-// last-published data.json, used to avoid showing the same picture twice
-// in a row. Meant to run every cycle (every 5 minutes).
+// Uses the PNGs in plugins/pictures/images/ (your own files - just drop
+// them in and commit; the folder IS the list) and writes:
+//
+//   public/pictures/slots/0000.json ... 2359.json  <- what TRMNL polls
+//   public/pictures/data.json                      <- older single-file feed
+//
+// Why one file per minute of the day: TRMNL only renders a new screen when
+// the polled data has CHANGED. If we relied on this script re-running every
+// few minutes, the clock would freeze whenever GitHub delays or drops the
+// scheduled workflow (which happens - sometimes for hours). Instead TRMNL's
+// polling URL includes the current time:
+//
+//   https://hikmek.github.io/trmnl_plugins/pictures/slots/{{ "now" | date: "%H%M" }}.json
+//
+// so every poll fetches a different file -> data always changed -> a fresh
+// screen (and clock) on every refresh, even if this script hasn't run for a
+// day. The picture rotation is baked into the files: each 15-minute block of
+// the day gets a random picture, never the same as the block before.
+// ("now" on TRMNL's side is UTC, but that doesn't matter - all 1440 minutes
+// exist, the file name is just a key.)
 
 import { readdir, writeFile, mkdir, copyFile } from "node:fs/promises";
 import path from "node:path";
@@ -21,6 +35,7 @@ const OUTPUT_PATH = path.join(PUBLIC_DIR, "data.json");
 const PUBLIC_BASE_URL = "https://hikmek.github.io/trmnl_plugins/pictures";
 const IMAGES_BASE_URL = `${PUBLIC_BASE_URL}/images`;
 const LIVE_DATA_URL = `${PUBLIC_BASE_URL}/data.json`;
+const SLOT_MINUTES = 15; // a new picture every 15 minutes
 const DIGITS_BASE_URL = `${PUBLIC_BASE_URL}/digits`;
 
 // Publish the clock digits (0.png-9.png, colon.png made by
@@ -70,23 +85,52 @@ async function main() {
     throw new Error(`No .png files in ${IMAGES_DIR} - add some pictures first`);
   }
 
-  const previous = await getPreviousFile();
-  const candidates = files.length > 1 ? files.filter((f) => f !== previous) : files;
-  const pick = candidates[Math.floor(Math.random() * candidates.length)];
-
-  const now = Date.now();
-  const output = {
-    plugin: "pictures",
-    generated_at: new Date(now).toISOString(),
-    updated_display: formatUpdatedDisplay(now), // "Data uppdaterad kl 14:55 idag"
-    digits_url: DIGITS_BASE_URL, // + "/0.png" ... "/9.png", "/colon.png"
-    image_url: `${IMAGES_BASE_URL}/${encodeURIComponent(pick)}`,
-    file: pick,
-    title: titleFromFile(pick),
-    index: files.indexOf(pick) + 1,
-    gallery_size: files.length,
+  const pickOther = (avoid) => {
+    const others = files.filter((f) => !avoid.includes(f));
+    const pool = others.length ? others : files;
+    return pool[Math.floor(Math.random() * pool.length)];
   };
 
+  const now = Date.now();
+  const common = {
+    plugin: "pictures",
+    generated_at: new Date(now).toISOString(), // the template shows this as "Data uppdaterad kl ..."
+    updated_display: formatUpdatedDisplay(now), // pre-formatted (older templates)
+    digits_url: DIGITS_BASE_URL, // + "/0.png" ... "/9.png", "/colon.png"
+    gallery_size: files.length,
+  };
+  const pictureFields = (file) => ({
+    image_url: `${IMAGES_BASE_URL}/${encodeURIComponent(file)}`,
+    file,
+    title: titleFromFile(file),
+    index: files.indexOf(file) + 1,
+  });
+
+  // One random picture per 15-minute block, never the same as the block
+  // before (the last block of the day also avoids the first, for midnight).
+  const blockCount = (24 * 60) / SLOT_MINUTES;
+  const blocks = [];
+  for (let b = 0; b < blockCount; b++) {
+    const avoid = [blocks[b - 1]];
+    if (b === blockCount - 1 && files.length > 2) avoid.push(blocks[0]);
+    blocks.push(pickOther(avoid.filter(Boolean)));
+  }
+
+  // One file per minute: slots/HHMM.json. The "slot" field makes every file
+  // different, so TRMNL always sees changed data and re-renders.
+  const slotsDir = path.join(PUBLIC_DIR, "slots");
+  await mkdir(slotsDir, { recursive: true });
+  for (let m = 0; m < 24 * 60; m++) {
+    const hhmm = `${String(Math.floor(m / 60)).padStart(2, "0")}${String(m % 60).padStart(2, "0")}`;
+    const slot = { ...common, slot: hhmm, ...pictureFields(blocks[Math.floor(m / SLOT_MINUTES)]) };
+    await writeFile(path.join(slotsDir, `${hhmm}.json`), JSON.stringify(slot));
+  }
+  console.log(`Wrote ${24 * 60} slot files to ${slotsDir}`);
+
+  // The older single-file feed (still works, but only changes when this
+  // script runs): random picture, avoiding the one currently published.
+  const previous = await getPreviousFile();
+  const output = { ...common, ...pictureFields(pickOther([previous])) };
   await mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
   await writeFile(OUTPUT_PATH, JSON.stringify(output, null, 2));
   console.log(`Wrote ${OUTPUT_PATH}`);

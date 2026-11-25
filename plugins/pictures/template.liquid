@@ -12,14 +12,22 @@
   The clock shows the time when TRMNL renders the screen (TRMNL's "now"
   is UTC, so we add your TRMNL account's time zone offset). E-ink doesn't
   tick, so it's the time of the latest refresh - it's at most one refresh
-  interval behind.
+  interval behind. It only stays fresh with the per-minute polling URL
+  (see README): TRMNL skips rendering when the polled data is unchanged.
 
   No "image-dither" anywhere (it would soften the pixel blocks), and
   image-rendering: pixelated keeps the blocks crisp if anything is scaled.
 {%- endcomment -%}
 
 {%- assign utc_offset = trmnl.user.utc_offset | default: 3600 -%}
-{%- assign hhmm = "now" | date: "%s" | plus: utc_offset | date: "%H%M" -%}
+{%- assign now_local = "now" | date: "%s" | plus: utc_offset -%}
+{%- assign hhmm = now_local | date: "%H%M" -%}
+{%- comment -%} When GitHub last rebuilt the data (shown bottom right) {%- endcomment -%}
+{%- assign gen_local = generated_at | date: "%s" | plus: utc_offset -%}
+{%- assign gen_hm = gen_local | date: "%H:%M" -%}
+{%- assign gen_day = gen_local | date: "%Y%m%d" -%}
+{%- assign now_day = now_local | date: "%Y%m%d" -%}
+{%- if gen_day == now_day -%}{%- assign gen_when = "idag" -%}{%- else -%}{%- assign gen_when = gen_local | date: "%-d/%-m" -%}{%- endif -%}
 
 <div class="layout layout--col layout--center" style="gap: 10px;">
   {%- comment -%} zoom 2/3: each 3x3 Game Boy block -> exactly 2x2 px {%- endcomment -%}
@@ -37,5 +45,5 @@
 <div class="title_bar">
   <span class="title">{{ title | default: "Bilder" }}</span>
   <span class="instance">{{ index }} / {{ gallery_size }}</span>
-  <span class="instance" style="margin-left: auto;">{{ updated_display }}</span>
+  <span class="instance" style="margin-left: auto;">Data uppdaterad kl {{ gen_hm }} {{ gen_when }}</span>
 </div>
