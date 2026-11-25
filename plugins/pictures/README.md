@@ -57,8 +57,8 @@ screen). High-contrast photos with a clear subject work best.
 
 ## Clock (your handwritten digits)
 
-Under the bird there's a clock drawn with your own handwritten digits, and
-under that "Data uppdaterad kl HH:MM idag".
+Under the bird there's a clock drawn with your own handwritten digits.
+"Data uppdaterad kl HH:MM idag" is in the title bar, bottom right.
 
 - `digits/source.png` is the handwritten number sheet. `generate-digits.mjs`
   cuts out 0-9 (positions in `DIGIT_BOXES`), pixelates them like the birds
